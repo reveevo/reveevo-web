@@ -1,7 +1,7 @@
 const sharetribeSdk = require('sharetribe-flex-sdk');
 const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTotal');
 const { transactionLineItems } = require('../api-util/lineItems');
-const { isIntentionToMakeOffer } = require('../api-util/negotiation');
+const { isIntentionToMakeOffer, pickOfferOrderData } = require('../api-util/negotiation');
 const {
   createCookieTokenStore,
   getSdk,
@@ -15,9 +15,22 @@ const { Money } = sharetribeSdk.types;
 
 const listingPromise = (sdk, id) => sdk.listings.show({ id });
 
-const getFullOrderData = (orderData, bodyParams, currency) => {
-  const { offerInSubunits } = orderData || {};
+// default-purchase process: the customer makes an offer on a product listing
+const isPurchaseOffer = transitionName => transitionName === 'transition/customer-make-offer';
+
+const getFullOrderData = (clientOrderData, bodyParams, currency) => {
+  // The offer price is only ever set here on the server - ignore it if the client sends one.
+  const { offer, ...orderData } = clientOrderData || {};
+  const { offerInSubunits } = orderData;
   const transitionName = bodyParams.transition;
+
+  if (isPurchaseOffer(transitionName) && !isIntentionToMakeOffer(offerInSubunits, transitionName)) {
+    const error = new Error('Offer is missing a valid amount');
+    error.status = 400;
+    error.statusText = 'Offer is missing a valid amount';
+    error.data = {};
+    throw error;
+  }
 
   return isIntentionToMakeOffer(offerInSubunits, transitionName)
     ? {
@@ -35,6 +48,11 @@ const getMetadata = (orderData, transition) => {
   const hasActor = ['provider', 'customer'].includes(actor);
   const by = hasActor ? actor : null;
 
+  // Purchase offers save the order details, so that they stay the same through the negotiation.
+  const offerOrderDataMaybe = isPurchaseOffer(transition)
+    ? { offerOrderData: pickOfferOrderData(orderData) }
+    : {};
+
   return isIntentionToMakeOffer(offerInSubunits, transition)
     ? {
         metadata: {
@@ -45,6 +63,7 @@ const getMetadata = (orderData, transition) => {
               transition,
             },
           ],
+          ...offerOrderDataMaybe,
         },
       }
     : {};

@@ -20,6 +20,7 @@ import { requireListingImage } from '../../util/configHelpers';
 import { getCurrentUserTypeRoles, hasPermissionToViewData } from '../../util/userHelpers.js';
 import { userDisplayNameAsString } from '../../util/data';
 import { isMobileSafari } from '../../util/userAgent';
+import { types as sdkTypes } from '../../util/sdkLoader';
 
 import {
   INQUIRY_PROCESS_NAME,
@@ -88,6 +89,8 @@ import {
   downloadFile,
 } from './TransactionPage.duck';
 import css from './TransactionPage.module.css';
+
+const { Money } = sdkTypes;
 
 const MAX_MOBILE_SCREEN_WIDTH = 1023;
 const SEND_MESSAGE_FORM_ID = 'TransactionPanel.SendMessageForm';
@@ -836,6 +839,26 @@ export const TransactionPageComponent = props => {
   });
 
   const actionButtonContainer = isMobile ? 'mobile' : 'desktop';
+
+  // Accepted purchase offer: the customer chooses the delivery method on OrderPanel (like after
+  // an inquiry). The offered quantity is fixed and the server prices line items with the offer.
+  const isAcceptedPurchaseOffer =
+    processName === PURCHASE_PROCESS_NAME &&
+    stateData.processState === process?.states?.OFFER_ACCEPTED;
+  const acceptedOfferQuantity = isAcceptedPurchaseOffer
+    ? transaction?.attributes?.metadata?.offerOrderData?.stockReservationQuantity
+    : null;
+  const acceptedOfferOrderPanelMaybe = isAcceptedPurchaseOffer
+    ? {
+        hidePrice: true,
+        fixedQuantity: acceptedOfferQuantity,
+        onFetchTransactionLineItems: ({ orderData, ...rest }) =>
+          restOfProps.onFetchTransactionLineItems({
+            orderData: { ...orderData, offerTransactionId: transaction.id },
+            ...rest,
+          }),
+      }
+    : {};
   // TransactionPanel is presentational component
   // that currently handles showing everything inside layout's main view area.
   const panel = isDataAvailable ? (
@@ -949,6 +972,7 @@ export const TransactionPageComponent = props => {
         <Offer
           transaction={transaction}
           isNegotiationProcess={isNegotiationProcess}
+          isPurchaseProcess={processName === PURCHASE_PROCESS_NAME}
           transactionRole={transactionRole}
           isRegularNegotiation={isRegularNegotiation}
           isProviderBanned={isProviderBanned}
@@ -995,6 +1019,7 @@ export const TransactionPageComponent = props => {
           marketplaceCurrency={config.currency}
           dayCountAvailableForBooking={config.stripe.dayCountAvailableForBooking}
           marketplaceName={config.marketplaceName}
+          {...acceptedOfferOrderPanelMaybe}
         />
       }
     />
@@ -1011,7 +1036,14 @@ export const TransactionPageComponent = props => {
   const negotiationOfferLineItem = transaction?.attributes?.lineItems?.find(item =>
     [LINE_ITEM_REQUEST, LINE_ITEM_OFFER].includes(item.code)
   );
-  const currentOffer = negotiationOfferLineItem?.unitPrice;
+  // Purchase offers are prices per item: the latest one is saved to transaction's metadata.
+  const isPurchaseOffer = processName === PURCHASE_PROCESS_NAME;
+  const latestPurchaseOfferInSubunits = transaction?.attributes?.metadata?.offers?.at(-1)
+    ?.offerInSubunits;
+  const currentOffer =
+    isPurchaseOffer && latestPurchaseOfferInSubunits
+      ? new Money(latestPurchaseOfferInSubunits, currency)
+      : negotiationOfferLineItem?.unitPrice;
   const showMakeCounterOfferModal =
     currencyConfig &&
     (process?.transitions?.CUSTOMER_MAKE_COUNTER_OFFER ||
@@ -1132,6 +1164,8 @@ export const TransactionPageComponent = props => {
             counterOfferInProgress={counterOffers.includes(transitionInProgress)}
             counterOfferError={transitionError}
             currencyConfig={currencyConfig}
+            isPricePerItem={isPurchaseOffer}
+            minimumOfferSubUnits={isPurchaseOffer ? config.listingMinimumPriceSubUnits : null}
           />
         ) : null}
       </LayoutSingleColumn>

@@ -461,6 +461,46 @@ describe('transactionLineItems', () => {
     });
   });
 
+  describe('Default Purchase Process - Item Unit Type with an offer', () => {
+    it('should use the offer as the unit price and keep quantity & shipping', () => {
+      const listing = {
+        ...mockListing,
+        attributes: {
+          ...mockListing.attributes,
+          publicData: {
+            ...mockListing.attributes.publicData,
+            unitType: 'item',
+            shippingPriceInSubunitsOneItem: 500, // €5.00
+            shippingPriceInSubunitsAdditionalItems: 200, // €2.00
+          },
+        },
+      };
+
+      const orderData = {
+        stockReservationQuantity: 2,
+        deliveryMethod: 'shipping',
+        currency: 'EUR',
+        offer: new Money(8000, 'EUR'), // €80.00 per item
+      };
+
+      const result = transactionLineItems(
+        listing,
+        orderData,
+        mockProviderCommission,
+        mockCustomerCommission
+      );
+
+      expect(result[0]).toEqual({
+        code: 'line-item/item',
+        unitPrice: new Money(8000, 'EUR'),
+        quantity: 2,
+        includeFor: ['customer', 'provider'],
+      });
+      expect(result[1].code).toBe('line-item/shipping-fee');
+      expect(result[1].unitPrice).toEqual(new Money(700, 'EUR'));
+    });
+  });
+
   describe('Default Negotiation Process - Request Unit Type (Reverse Flow)', () => {
     it('should create line items for negotiation request with offer', () => {
       const listing = {

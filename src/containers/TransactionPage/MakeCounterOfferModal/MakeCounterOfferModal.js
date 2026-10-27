@@ -6,12 +6,15 @@ import { useConfiguration } from '../../../context/configurationContext';
 import { FormattedMessage, useIntl } from '../../../util/reactIntl';
 import { propTypes } from '../../../util/types';
 import { formatMoney } from '../../../util/currency';
-import { required } from '../../../util/validators';
+import { composeValidators, moneySubUnitAmountAtLeast, required } from '../../../util/validators';
+import { types as sdkTypes } from '../../../util/sdkLoader';
 
 import { FieldCurrencyInput, Form, Modal, Button } from '../../../components';
 
 import IconPriceTag from './IconPriceTag';
 import css from './MakeCounterOfferModal.module.css';
+
+const { Money } = sdkTypes;
 
 const MakeCounterOfferForm = props => (
   <FinalForm
@@ -30,6 +33,8 @@ const MakeCounterOfferForm = props => (
         counterOfferInProgress,
         currencyConfig,
         currentOffer,
+        isPricePerItem,
+        minimumOfferSubUnits,
       } = fieldRenderProps;
 
       const errorMessageMaybe = counterOfferError ? (
@@ -40,6 +45,22 @@ const MakeCounterOfferForm = props => (
       const submitInProgress = counterOfferInProgress;
       const submitDisabled = invalid || disabled || submitInProgress;
       const currentOfferFormatted = currentOffer ? formatMoney(intl, currentOffer) : '$10.00';
+      const offerRequired = required(
+        intl.formatMessage({ id: 'MakeCounterOfferForm.offerRequired' })
+      );
+      const minimumOffer =
+        minimumOfferSubUnits && currentOffer?.currency
+          ? formatMoney(intl, new Money(minimumOfferSubUnits, currentOffer.currency))
+          : null;
+      const offerValidators = minimumOffer
+        ? composeValidators(
+            offerRequired,
+            moneySubUnitAmountAtLeast(
+              intl.formatMessage({ id: 'MakeCounterOfferForm.offerTooLow' }, { minimumOffer }),
+              minimumOfferSubUnits
+            )
+          )
+        : offerRequired;
 
       return (
         <Form className={classes} onSubmit={handleSubmit}>
@@ -47,13 +68,17 @@ const MakeCounterOfferForm = props => (
             className={css.counterOffer}
             id={formId ? `${formId}.counterOffer` : 'counterOffer'}
             name="counterOffer"
-            label={intl.formatMessage({ id: 'MakeCounterOfferForm.offerLabel' })}
+            label={intl.formatMessage({
+              id: isPricePerItem
+                ? 'MakeCounterOfferForm.offerPerItemLabel'
+                : 'MakeCounterOfferForm.offerLabel',
+            })}
             placeholder={intl.formatMessage(
               { id: 'MakeCounterOfferForm.offerPlaceholder' },
               { currentOffer: currentOfferFormatted }
             )}
             currencyConfig={currencyConfig}
-            validate={required(intl.formatMessage({ id: 'MakeCounterOfferForm.offerRequired' }))}
+            validate={offerValidators}
           />
           <p className={css.errorPlaceholder}>{errorMessageMaybe}</p>
           <Button
@@ -107,6 +132,8 @@ const CounterOfferInfo = props => {
  * @param {boolean} props.counterOfferInProgress - Whether the counter offer is in progress
  * @param {propTypes.error} props.counterOfferError - The counter offer error
  * @param {Object} props.currencyConfig - The currency configuration
+ * @param {boolean} [props.isPricePerItem] - Whether the offer is a price per item (product purchases)
+ * @param {number} [props.minimumOfferSubUnits] - The minimum offer (in subunits)
  * @returns {JSX.Element} The MakeCounterOfferModal component
  */
 const MakeCounterOfferModal = props => {
@@ -125,6 +152,8 @@ const MakeCounterOfferModal = props => {
     counterOfferError,
     currencyConfig,
     currentOffer,
+    isPricePerItem = false,
+    minimumOfferSubUnits,
   } = props;
   const classes = classNames(rootClassName || css.root, className);
 
@@ -148,6 +177,8 @@ const MakeCounterOfferModal = props => {
         counterOfferSubmitted={counterOfferSubmitted}
         intl={intl}
         currencyConfig={currencyConfig}
+        isPricePerItem={isPricePerItem}
+        minimumOfferSubUnits={minimumOfferSubUnits}
       />
     </Modal>
   );

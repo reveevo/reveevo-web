@@ -138,7 +138,7 @@ const getDateRangeQuantityAndLineItems = (orderData, code) => {
  * @param {Object} listing
  * @param {Object} orderData
  * @param {string} [orderData.priceVariantName] - The name of the price variant (potentially used with bookable unit types)
- * @param {Money} [orderData.offer] - The offer for the offer (if transition intent is "make-offer")
+ * @param {Money} [orderData.offer] - The offered unit price (set by the server for offer transitions)
  * @param {Object} providerCommission
  * @param {Object} customerCommission
  * @returns {Array} lineItems
@@ -151,6 +151,9 @@ exports.transactionLineItems = (listing, orderData, providerCommission, customer
 
   const isBookable = ['day', 'night', 'hour', 'fixed'].includes(unitType);
   const isNegotiationUnitType = ['offer', 'request'].includes(unitType);
+  // Negotiation listings are always priced by offers. Products can be bought with an offer too.
+  // Note: orderData.offer must only be set on the server (never pass it through from the client).
+  const canBePricedByOffer = isNegotiationUnitType || unitType === 'item';
   const priceAttribute = listing.attributes.price;
   const currency = priceAttribute?.currency || orderData.currency;
 
@@ -164,7 +167,7 @@ exports.transactionLineItems = (listing, orderData, providerCommission, customer
   const unitPrice =
     isBookable && priceVariationsEnabled && isPriceInSubunitsValid
       ? new Money(priceInSubunits, currency)
-      : offer instanceof Money && isNegotiationUnitType
+      : offer instanceof Money && canBePricedByOffer
       ? offer
       : priceAttribute;
 

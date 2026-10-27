@@ -71,6 +71,16 @@
   }
 }
 
+/* On mobile, the offer button is shown in OrderPanel's bottom bar instead */
+.makeOfferButton {
+  display: none;
+
+  @media (--viewportLarge) {
+    display: block;
+    margin-top: 16px;
+  }
+}
+
 .finePrint {
   composes: marketplaceTinyFontStyles from global;
   text-align: center;

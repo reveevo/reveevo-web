@@ -37,7 +37,14 @@ import {
   resolveLatestProcessName,
 } from '../../transactions/transaction';
 
-import { ModalInMobile, PrimaryButton, AvatarSmall, H1, H2 } from '../../components';
+import {
+  ModalInMobile,
+  PrimaryButton,
+  SecondaryButton,
+  AvatarSmall,
+  H1,
+  H2,
+} from '../../components';
 import PriceVariantPicker from './PriceVariantPicker/PriceVariantPicker';
 import SubmitFinePrint from './SubmitFinePrint/SubmitFinePrint';
 
@@ -265,6 +272,8 @@ const hasValidPriceVariants = priceVariants => {
  * @param {Object} [props.monthlyTimeSlots] - Available time slots by month
  * @param {Function} props.onFetchTransactionLineItems - Handler for fetching transaction line items
  * @param {Function} [props.onContactUser] - Handler for contacting the listing author
+ * @param {Function} [props.onMakeOffer] - Handler for making an offer on a product listing
+ * @param {number} [props.fixedQuantity] - Product quantity that can't be changed (accepted offers)
  * @param {Array} [props.lineItems] - Array of line items for the transaction
  * @param {boolean} props.fetchLineItemsInProgress - Whether line items are being fetched
  * @param {Object} [props.fetchLineItemsError] - Error object if line items fetch failed
@@ -303,6 +312,8 @@ const OrderPanel = props => {
     timeSlotsForDate,
     onFetchTransactionLineItems,
     onContactUser,
+    onMakeOffer,
+    fixedQuantity,
     lineItems,
     marketplaceCurrency,
     dayCountAvailableForBooking,
@@ -427,6 +438,16 @@ const OrderPanel = props => {
     sectionHeadingAs,
   };
 
+  // Product offers: the most items an offer can be made for.
+  const maxOfferQuantity = allowOrdersOfMultipleItems ? currentStock : 1;
+  const handleMakeOffer =
+    typeof onMakeOffer === 'function'
+      ? orderDetails => onMakeOffer({ ...orderDetails, maxQuantity: maxOfferQuantity })
+      : null;
+  // On mobile, the offer button is next to "Buy now" in the bottom bar (not inside the order modal)
+  const showMakeOfferInMobileBar =
+    !!handleMakeOffer && shouldHavePurchase && !isClosed && currentStock > 0;
+
   const showClosedListingHelpText = listing.id && isClosed;
 
   const subTitleText = showClosedListingHelpText
@@ -544,6 +565,8 @@ const OrderPanel = props => {
             shippingEnabled={shippingEnabled && displayShipping}
             displayDeliveryMethod={displayPickup || displayShipping}
             onContactUser={onContactUser}
+            onMakeOffer={handleMakeOffer}
+            fixedQuantity={fixedQuantity}
             {...sharedProps}
           />
         ) : showDownloadForm ? (
@@ -595,6 +618,18 @@ const OrderPanel = props => {
         {isClosed ? (
           <div className={css.closedListingButton}>
             <FormattedMessage id="OrderPanel.closedListingButtonText" />
+          </div>
+        ) : showMakeOfferInMobileBar ? (
+          <div className={css.ctaButtons}>
+            <PrimaryButton
+              id={ORDER_PANEL_SUBMIT_BUTTON_ID}
+              onClick={handleSubmit(isOwnListing, isClosed, false, onSubmit, history, location)}
+            >
+              <FormattedMessage id="OrderPanel.ctaButtonMessagePurchase" />
+            </PrimaryButton>
+            <SecondaryButton type="button" onClick={() => handleMakeOffer({ quantity: 1 })}>
+              <FormattedMessage id="ProductOrderForm.makeOfferButton" />
+            </SecondaryButton>
           </div>
         ) : (
           <PrimaryButton

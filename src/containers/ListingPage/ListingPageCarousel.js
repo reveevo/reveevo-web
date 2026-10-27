@@ -32,6 +32,7 @@ import NotFoundPage from '../NotFoundPage/NotFoundPage';
 
 import {
   sendInquiry,
+  makeOffer,
   setInitialValues,
   fetchTimeSlots,
   fetchTransactionLineItems,
@@ -42,6 +43,8 @@ import {
   ErrorPage,
   handleContactUser,
   handleSubmitInquiry,
+  handleOpenMakeOfferModal,
+  handleSubmitOffer,
   handleNavigateToMakeOfferPage,
   handleNavigateToRequestQuotePage,
   handleSubmit,
@@ -56,6 +59,8 @@ import SectionGallery from './SectionGallery';
 import CustomListingFields from './CustomListingFields';
 import ListingPageAccessWrapper from './ListingPageAccessWrapper';
 
+import MakeOfferModal from './MakeOfferModal/MakeOfferModal';
+
 import css from './ListingPage.module.css';
 
 const MIN_LENGTH_FOR_LONG_WORDS_IN_TITLE = 16;
@@ -65,6 +70,8 @@ export const ListingPageComponent = props => {
     props.inquiryModalOpenForListingId === props.params.id
   );
   const [mounted, setMounted] = useState(false);
+  // Order details ({ quantity, maxQuantity }) for the offer. The make-offer modal is open when set.
+  const [makeOfferOrderDetails, setMakeOfferOrderDetails] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -85,6 +92,9 @@ export const ListingPageComponent = props => {
     fetchReviewsError,
     sendInquiryInProgress,
     sendInquiryError,
+    makeOfferInProgress,
+    makeOfferError,
+    onMakeOffer,
     history,
     callSetInitialValues,
     onSendInquiry,
@@ -180,6 +190,24 @@ export const ListingPageComponent = props => {
     getListing,
     onSendInquiry,
     setInquiryModalOpen,
+  });
+
+  // Customers can make an offer on product listings instead of paying the listed price.
+  const onOpenMakeOfferModal =
+    processType === 'purchase' && !isOwnListing
+      ? handleOpenMakeOfferModal({
+          ...commonParams,
+          currentUser,
+          location,
+          setMakeOfferOrderDetails,
+        })
+      : null;
+  const onSubmitOffer = handleSubmitOffer({
+    ...commonParams,
+    getListing,
+    onMakeOffer,
+    makeOfferOrderDetails,
+    setMakeOfferOrderDetails,
   });
 
   const handleOrderSubmit = values => {
@@ -333,6 +361,7 @@ export const ListingPageComponent = props => {
               author={ensuredAuthor}
               onManageDisableScrolling={onManageDisableScrolling}
               onContactUser={onContactUser}
+              onMakeOffer={onOpenMakeOfferModal}
               {...restOfProps}
               validListingTypes={config.listing.listingTypes}
               marketplaceCurrency={config.currency}
@@ -342,6 +371,20 @@ export const ListingPageComponent = props => {
             />
           </div>
         </div>
+        {onOpenMakeOfferModal ? (
+          <MakeOfferModal
+            id="ListingPage.makeOfferModal"
+            isOpen={isAuthenticated && !!makeOfferOrderDetails}
+            onClose={() => setMakeOfferOrderDetails(null)}
+            onManageDisableScrolling={onManageDisableScrolling}
+            price={price}
+            quantity={makeOfferOrderDetails?.quantity}
+            maxQuantity={makeOfferOrderDetails?.maxQuantity}
+            onSubmit={onSubmitOffer}
+            inProgress={makeOfferInProgress}
+            makeOfferError={makeOfferError}
+          />
+        ) : null}
       </LayoutSingleColumn>
     </Page>
   );
@@ -393,6 +436,8 @@ const ListingPage = props => {
     timeSlotsForDate,
     sendInquiryInProgress,
     sendInquiryError,
+    makeOfferInProgress,
+    makeOfferError,
     lineItems,
     fetchLineItemsInProgress,
     fetchLineItemsError,
@@ -437,6 +482,7 @@ const ListingPage = props => {
   const onSendInquiry = useCallback((listing, message) => dispatch(sendInquiry(listing, message)), [
     dispatch,
   ]);
+  const onMakeOffer = useCallback(params => dispatch(makeOffer(params)), [dispatch]);
   const onInitializeCardPaymentData = useCallback(() => dispatch(initializeCardPaymentData()), [
     dispatch,
   ]);
@@ -466,6 +512,9 @@ const ListingPage = props => {
       fetchLineItemsError={fetchLineItemsError}
       sendInquiryInProgress={sendInquiryInProgress}
       sendInquiryError={sendInquiryError}
+      makeOfferInProgress={makeOfferInProgress}
+      makeOfferError={makeOfferError}
+      onMakeOffer={onMakeOffer}
       onManageDisableScrolling={onManageDisableScrolling}
       callSetInitialValues={callSetInitialValues}
       onFetchTransactionLineItems={onFetchTransactionLineItems}

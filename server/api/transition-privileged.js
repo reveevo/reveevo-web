@@ -3,9 +3,12 @@ const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTot
 const { transactionLineItems } = require('../api-util/lineItems');
 const {
   addOfferToMetadata,
+  getAcceptedOfferAmount,
   getAmountFromPreviousOffer,
+  getOfferOrderData,
   isIntentionToMakeCounterOffer,
   isIntentionToMakeOffer,
+  isIntentionToPayAcceptedOffer,
   isIntentionToRevokeCounterOffer,
   isIntentionToUpdateOffer,
   throwErrorIfNegotiationOfferHasInvalidHistory,
@@ -64,12 +67,29 @@ const getRoleBasedBodyParams = (orderData, bodyParams) => {
   }
 };
 
-const getFullOrderData = (orderData, bodyParams, currency, offers) => {
+// default-purchase process: the quantity of an offer was saved when the offer was made.
+// Use it instead of client's data, so the item count can't change after the price is agreed.
+const getBodyParamsWithOfferOrderData = (bodyParams, offerOrderData) => {
+  const { stockReservationQuantity } = offerOrderData;
+  if (!isIntentionToPayAcceptedOffer(bodyParams.transition) || !stockReservationQuantity) {
+    return bodyParams;
+  }
+  return { ...bodyParams, params: { ...bodyParams.params, stockReservationQuantity } };
+};
+
+const getFullOrderData = (orderData, bodyParams, currency, offers, transitions) => {
   const { offerInSubunits } = orderData || {};
   const transitionName = bodyParams.transition;
 
   const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
   const orderDataAndParams = { ...orderData, ...roleBasedBodyParams.params, currency };
+
+  if (isIntentionToPayAcceptedOffer(transitionName)) {
+    return {
+      ...orderDataAndParams,
+      offer: new Money(getAcceptedOfferAmount(offers, transitions), currency),
+    };
+  }
 
   const isNewOffer =
     isIntentionToMakeOffer(offerInSubunits, transitionName) ||
@@ -124,6 +144,7 @@ module.exports = (req, res) => {
   const transitionName = bodyParams.transition;
   let lineItems = null;
   let metadataMaybe = {};
+  let trustedBodyParams = bodyParams;
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
     .then(responses => {
@@ -146,9 +167,21 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
+      // The offer price is only ever set here on the server - ignore it if the client sends one.
+      const { offer, ...clientOrderData } = orderData || {};
+      const offerOrderData = getOfferOrderData(existingMetadata);
+      const trustedOrderData = { ...clientOrderData, ...offerOrderData };
+      trustedBodyParams = getBodyParamsWithOfferOrderData(bodyParams, offerOrderData);
+
       lineItems = transactionLineItems(
         listing,
-        getFullOrderData(orderData, bodyParams, currency, existingOffers),
+        getFullOrderData(
+          trustedOrderData,
+          trustedBodyParams,
+          currency,
+          existingOffers,
+          transitions
+        ),
         providerCommission,
         customerCommission
       );
@@ -167,13 +200,13 @@ module.exports = (req, res) => {
       //   related protected data fields if the transition is from a provider
       // - If you customize the transaction process to allow customers to update protected data
       //   after a provider's offer, you can add that logic in this same function.
-      const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
+      const roleBasedBodyParams = getRoleBasedBodyParams(orderData, trustedBodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
 
       // Add lineItems to the body params
       const body = {
-        ...bodyParams,
+        ...trustedBodyParams,
         params: {
           ...restParams,
           lineItems,

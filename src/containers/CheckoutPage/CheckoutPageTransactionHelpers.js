@@ -2,7 +2,11 @@
 import { findRouteByRouteName } from '../../util/routes';
 import { ensureStripeCustomer, ensureTransaction } from '../../util/data';
 import { formatMoney } from '../../util/currency';
-import { NEGOTIATION_PROCESS_NAME, resolveLatestProcessName } from '../../transactions/transaction';
+import {
+  NEGOTIATION_PROCESS_NAME,
+  PURCHASE_PROCESS_NAME,
+  resolveLatestProcessName,
+} from '../../transactions/transaction';
 import { storeData } from './CheckoutPageSessionHelpers';
 
 /**
@@ -21,6 +25,50 @@ export const getTransactionTypeData = (listingType, unitTypeInPublicData, config
   // Note: we want to rely on unitType written in public data of the listing entity.
   //       The listingType configuration might have changed on the fly.
   return unitTypeInPublicData ? { unitType: unitTypeInPublicData, ...rest } : {};
+};
+
+/**
+ * Returns the transition that requests payment, based on the state of the existing transaction:
+ * - inquiry (any payment process):           request-payment-after-inquiry
+ * - offer-pending (default-negotiation):     request-payment-to-accept-offer
+ * - offer-accepted (default-purchase):       request-payment-after-offer
+ * - no transaction yet:                      request-payment
+ *
+ * @param {Object} tx existing transaction (or null)
+ * @param {Object} process transaction process
+ * @param {string} processAlias e.g. 'default-purchase/release-1'
+ * @returns {string} transition name
+ */
+export const getRequestPaymentTransition = (tx, process, processAlias) => {
+  const processName = resolveLatestProcessName(processAlias?.split('/')[0]);
+  const txState = tx?.attributes?.state;
+  const isOfferPendingInNegotiationProcess =
+    processName === NEGOTIATION_PROCESS_NAME && txState === `state/${process.states.OFFER_PENDING}`;
+  const isOfferAcceptedInPurchaseProcess =
+    processName === PURCHASE_PROCESS_NAME && txState === `state/${process.states.OFFER_ACCEPTED}`;
+
+  return tx?.attributes?.lastTransition === process.transitions.INQUIRE
+    ? process.transitions.REQUEST_PAYMENT_AFTER_INQUIRY
+    : isOfferPendingInNegotiationProcess
+    ? process.transitions.REQUEST_PAYMENT_TO_ACCEPT_OFFER
+    : isOfferAcceptedInPurchaseProcess
+    ? process.transitions.REQUEST_PAYMENT_AFTER_OFFER
+    : process.transitions.REQUEST_PAYMENT;
+};
+
+/**
+ * Checks if the existing transaction's line items can be used for the order breakdown.
+ * An accepted purchase offer has line items, but they don't include the delivery method
+ * that is chosen just before checkout. In that case, the speculated transaction is used.
+ *
+ * @param {Object} tx existing transaction (or null)
+ * @returns {boolean}
+ */
+export const hasFinalLineItems = tx => {
+  const processName = resolveLatestProcessName(tx?.attributes?.processName);
+  const isAcceptedPurchaseOffer =
+    processName === PURCHASE_PROCESS_NAME && tx?.attributes?.state === 'state/offer-accepted';
+  return tx?.attributes?.lineItems?.length > 0 && !isAcceptedPurchaseOffer;
 };
 
 /**
@@ -202,16 +250,7 @@ export const processCheckoutWithPayment = (orderParams, extraPaymentParams) => {
     // fnParams should be { listingId, deliveryMethod?, quantity?, bookingDates?, paymentMethod?.setupPaymentMethodForSaving?, protectedData }
     const hasPaymentIntents = storedTx.attributes.protectedData?.stripePaymentIntents;
 
-    const isOfferPendingInNegotiationProcess =
-      resolveLatestProcessName(processAlias.split('/')[0]) === NEGOTIATION_PROCESS_NAME &&
-      storedTx.attributes.state === `state/${process.states.OFFER_PENDING}`;
-
-    const requestTransition =
-      storedTx?.attributes?.lastTransition === process.transitions.INQUIRE
-        ? process.transitions.REQUEST_PAYMENT_AFTER_INQUIRY
-        : isOfferPendingInNegotiationProcess
-        ? process.transitions.REQUEST_PAYMENT_TO_ACCEPT_OFFER
-        : process.transitions.REQUEST_PAYMENT;
+    const requestTransition = getRequestPaymentTransition(storedTx, process, processAlias);
     const isPrivileged = process.isPrivileged(requestTransition);
 
     // If paymentIntent exists, order has been initiated previously.

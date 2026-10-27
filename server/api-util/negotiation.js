@@ -1,14 +1,16 @@
 // default-negotiation process: transitions that make the first offer
+// default-purchase process: 'transition/customer-make-offer'
 const makeOfferTransitions = [
   'transition/make-offer',
   'transition/make-offer-after-inquiry',
   'transition/make-offer-from-request',
+  'transition/customer-make-offer',
 ];
 
 // default-negotiation process: transitions that update the offer
 const updateOfferTransitions = ['transition/update-offer', 'transition/update-from-update-pending'];
 
-// default-negotiation process: transitions that make a counter offer
+// default-negotiation & default-purchase processes: transitions that make a counter offer
 const counterOfferTransitions = [
   'transition/customer-make-counter-offer',
   'transition/provider-make-counter-offer',
@@ -19,6 +21,9 @@ const revokeCounterOfferTransitions = [
   'transition/customer-withdraw-counter-offer',
   'transition/provider-reject-counter-offer',
 ];
+
+// default-purchase process: transitions that pay the latest (accepted) offer
+const payAcceptedOfferTransitions = ['transition/request-payment-after-offer'];
 
 // default-negotiation process: transitions that affect pricing on negotiation loop
 const offerTransitionsInNegotiationProcess = [
@@ -188,4 +193,73 @@ exports.addOfferToMetadata = (metadata, offer) => {
     : metadata
     ? { metadata }
     : {};
+};
+
+/**
+ * Checks if the transition pays for an offer that both parties have accepted.
+ * The price of such a transition must come from the stored offers - never from the client.
+ *
+ * @param {string} transitionName
+ * @returns {boolean}
+ */
+exports.isIntentionToPayAcceptedOffer = transitionName => {
+  return payAcceptedOfferTransitions.includes(transitionName);
+};
+
+/**
+ * Returns the amount of the latest offer, after verifying that the offers array
+ * matches the transaction's transition history.
+ *
+ * @param {Array<NegotiationOffer>} offers - Array of negotiation offers
+ * @param {Array<TransitionRecord>} transitions - Array of transition records
+ * @returns {number} the accepted offer (in subunits)
+ */
+exports.getAcceptedOfferAmount = (offers, transitions) => {
+  const hasValidHistory = isValidNegotiationOffersArray(
+    offers,
+    transitions,
+    offerTransitionsInNegotiationProcess
+  );
+  const latestOffer = hasValidHistory ? offers[offers.length - 1] : null;
+
+  if (!latestOffer) {
+    const error = new Error('Accepted offer is missing or invalid');
+    error.status = 400;
+    error.statusText = 'Accepted offer is missing or invalid';
+    error.data = { offers };
+    throw error;
+  }
+  return latestOffer.offerInSubunits;
+};
+
+/**
+ * The quantity of a purchase offer is decided when the customer makes the offer.
+ * It's saved to transaction's metadata, which only privileged calls can change,
+ * so later offers and the payment can't alter how many items the offer is for.
+ * Note: the delivery method is chosen when the accepted offer is paid (like after an inquiry).
+ *
+ * @param {Object} metadata - Transaction's metadata
+ * @returns {Object} e.g. { stockReservationQuantity: 2 } or {}
+ */
+exports.getOfferOrderData = metadata => {
+  const { stockReservationQuantity } = metadata?.offerOrderData || {};
+  return Number.isInteger(stockReservationQuantity) ? { stockReservationQuantity } : {};
+};
+
+/**
+ * Picks and validates the order details for a new purchase offer from client's orderData.
+ *
+ * @param {Object} orderData
+ * @returns {Object} e.g. { stockReservationQuantity: 2 }
+ */
+exports.pickOfferOrderData = orderData => {
+  const { stockReservationQuantity } = orderData || {};
+  if (!Number.isInteger(stockReservationQuantity) || stockReservationQuantity < 1) {
+    const error = new Error('Offer is missing a valid quantity');
+    error.status = 400;
+    error.statusText = 'Offer is missing a valid quantity';
+    error.data = {};
+    throw error;
+  }
+  return { stockReservationQuantity };
 };

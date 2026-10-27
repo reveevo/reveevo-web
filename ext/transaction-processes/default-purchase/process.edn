@@ -23,6 +23,89 @@
     {:name :action/stripe-create-payment-intent}],
    :from :state/inquiry,
    :to :state/pending-payment}
+  {:name :transition/customer-make-offer,
+   :actor :actor.role/customer,
+   :privileged? true,
+   :actions
+   [{:name :action/update-protected-data}
+    {:name :action/privileged-set-line-items}
+    {:name :action/privileged-update-metadata}],
+   :to :state/offer-pending}
+  {:name :transition/provider-accept-offer,
+   :actor :actor.role/provider,
+   :actions [],
+   :from :state/offer-pending,
+   :to :state/offer-accepted}
+  {:name :transition/provider-decline-offer,
+   :actor :actor.role/provider,
+   :actions [],
+   :from :state/offer-pending,
+   :to :state/offer-declined}
+  {:name :transition/provider-make-counter-offer,
+   :actor :actor.role/provider,
+   :privileged? true,
+   :actions
+   [{:name :action/privileged-set-line-items}
+    {:name :action/privileged-update-metadata}],
+   :from :state/offer-pending,
+   :to :state/counter-offer-pending}
+  {:name :transition/customer-withdraw-offer,
+   :actor :actor.role/customer,
+   :actions [],
+   :from :state/offer-pending,
+   :to :state/offer-withdrawn}
+  {:name :transition/expire-offer,
+   :at
+   {:fn/plus
+    [{:fn/timepoint [:time/last-entered-state :state/offer-pending]}
+     {:fn/period ["P3D"]}]},
+   :actions [],
+   :from :state/offer-pending,
+   :to :state/offer-expired}
+  {:name :transition/customer-accept-counter-offer,
+   :actor :actor.role/customer,
+   :actions [],
+   :from :state/counter-offer-pending,
+   :to :state/offer-accepted}
+  {:name :transition/customer-decline-counter-offer,
+   :actor :actor.role/customer,
+   :actions [],
+   :from :state/counter-offer-pending,
+   :to :state/offer-declined}
+  {:name :transition/customer-make-counter-offer,
+   :actor :actor.role/customer,
+   :privileged? true,
+   :actions
+   [{:name :action/privileged-set-line-items}
+    {:name :action/privileged-update-metadata}],
+   :from :state/counter-offer-pending,
+   :to :state/offer-pending}
+  {:name :transition/expire-counter-offer,
+   :at
+   {:fn/plus
+    [{:fn/timepoint [:time/last-entered-state :state/counter-offer-pending]}
+     {:fn/period ["P3D"]}]},
+   :actions [],
+   :from :state/counter-offer-pending,
+   :to :state/offer-expired}
+  {:name :transition/request-payment-after-offer,
+   :actor :actor.role/customer,
+   :privileged? true,
+   :actions
+   [{:name :action/update-protected-data}
+    {:name :action/create-pending-stock-reservation}
+    {:name :action/privileged-set-line-items}
+    {:name :action/stripe-create-payment-intent}],
+   :from :state/offer-accepted,
+   :to :state/pending-payment}
+  {:name :transition/expire-accepted-offer,
+   :at
+   {:fn/plus
+    [{:fn/timepoint [:time/first-entered-state :state/offer-accepted]}
+     {:fn/period ["P3D"]}]},
+   :actions [],
+   :from :state/offer-accepted,
+   :to :state/offer-expired}
   {:name :transition/confirm-payment,
    :actor :actor.role/customer,
    :actions
@@ -322,4 +405,40 @@
   {:name :notification/review-by-customer-second,
    :on :transition/review-2-by-customer,
    :to :actor.role/provider,
-   :template :purchase-review-by-other-party-published}]}
+   :template :purchase-review-by-other-party-published}
+  {:name :notification/purchase-new-offer,
+   :on :transition/customer-make-offer,
+   :to :actor.role/provider,
+   :template :purchase-new-offer}
+  {:name :notification/purchase-new-offer-from-counter,
+   :on :transition/customer-make-counter-offer,
+   :to :actor.role/provider,
+   :template :purchase-new-offer}
+  {:name :notification/purchase-new-counter-offer,
+   :on :transition/provider-make-counter-offer,
+   :to :actor.role/customer,
+   :template :purchase-new-counter-offer}
+  {:name :notification/purchase-offer-accepted,
+   :on :transition/provider-accept-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-accepted}
+  {:name :notification/purchase-offer-declined,
+   :on :transition/provider-decline-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-declined-to-customer}
+  {:name :notification/purchase-counter-offer-declined,
+   :on :transition/customer-decline-counter-offer,
+   :to :actor.role/provider,
+   :template :purchase-offer-declined-to-provider}
+  {:name :notification/purchase-offer-expired,
+   :on :transition/expire-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-expired}
+  {:name :notification/purchase-counter-offer-expired,
+   :on :transition/expire-counter-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-expired}
+  {:name :notification/purchase-accepted-offer-expired,
+   :on :transition/expire-accepted-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-expired}]}

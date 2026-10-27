@@ -331,6 +331,61 @@ export const handleContactUser = parameters => () => {
  *
  * @param {Object} parameters all the info needed to create inquiry.
  */
+/**
+ * Opens the make-offer modal with the selected order details: { quantity, maxQuantity }.
+ * Unauthenticated users are sent to sign up first, and users without the necessary
+ * permissions are sent to NoAccessPage.
+ *
+ * @param {Object} parameters all the info needed to open the modal
+ * @returns {Function} a handler that takes the order details: { quantity, maxQuantity }
+ */
+export const handleOpenMakeOfferModal = parameters => orderDetails => {
+  const { history, currentUser, location, routes, setMakeOfferOrderDetails } = parameters;
+
+  if (!currentUser) {
+    const state = { from: `${location.pathname}${location.search}${location.hash}` };
+    history.push(createResourceLocatorString('SignupPage', routes, {}, {}), state);
+  } else if (!isUserAuthorized(currentUser)) {
+    const pathParams = { missingAccessRight: NO_ACCESS_PAGE_USER_PENDING_APPROVAL };
+    history.push(createResourceLocatorString('NoAccessPage', routes, pathParams, {}));
+  } else if (!hasPermissionToInitiateTransactions(currentUser)) {
+    const pathParams = { missingAccessRight: NO_ACCESS_PAGE_INITIATE_TRANSACTIONS };
+    history.push(createResourceLocatorString('NoAccessPage', routes, pathParams, {}));
+  } else {
+    setMakeOfferOrderDetails(orderDetails);
+  }
+};
+
+/**
+ * Submits an offer from the make-offer modal and redirects the customer to OrderDetailsPage.
+ *
+ * @param {Object} parameters all the info needed to submit the offer
+ * @returns {Function} a form submit handler that takes { offer, quantity, message }
+ */
+export const handleSubmitOffer = parameters => values => {
+  const {
+    history,
+    params,
+    getListing,
+    onMakeOffer,
+    routes,
+    makeOfferOrderDetails,
+    setMakeOfferOrderDetails,
+  } = parameters;
+  const listing = getListing(new UUID(params.id));
+  const { offer, message, quantity } = values;
+  const offerQuantity = Number.parseInt(quantity, 10) || makeOfferOrderDetails?.quantity;
+
+  onMakeOffer({ listing, offer, quantity: offerQuantity, message: message?.trim() })
+    .then(txId => {
+      setMakeOfferOrderDetails(null);
+      history.push(createResourceLocatorString('OrderDetailsPage', routes, { id: txId.uuid }, {}));
+    })
+    .catch(() => {
+      // Ignore, error handling in duck file
+    });
+};
+
 export const handleSubmitInquiry = parameters => values => {
   const { history, params, getListing, onSendInquiry, routes, setInquiryModalOpen } = parameters;
 

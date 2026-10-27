@@ -16,7 +16,6 @@ import {
 } from '../../util/errors';
 import {
   getProcess,
-  resolveLatestProcessName,
   BOOKING_PROCESS_NAME,
   NEGOTIATION_PROCESS_NAME,
   PURCHASE_PROCESS_NAME,
@@ -32,6 +31,8 @@ import {
   bookingDatesMaybe,
   getBillingDetails,
   getFormattedTotalPrice,
+  getRequestPaymentTransition,
+  hasFinalLineItems,
   getShippingDetailsMaybe,
   getTransactionTypeData,
   hasDefaultPaymentMethod,
@@ -184,18 +185,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
   if (shouldFetchSpeculatedTransaction) {
     const processAlias = pageData.listing.attributes.publicData?.transactionProcessAlias;
     const transactionId = tx ? tx.id : null;
-    const isInquiryInPaymentProcess =
-      tx?.attributes?.lastTransition === process.transitions.INQUIRE;
-    const resolvedProcessName = resolveLatestProcessName(processName);
-    const isOfferPendingInNegotiationProcess =
-      resolvedProcessName === NEGOTIATION_PROCESS_NAME &&
-      tx.attributes.state === `state/${process.states.OFFER_PENDING}`;
-
-    const requestTransition = isInquiryInPaymentProcess
-      ? process.transitions.REQUEST_PAYMENT_AFTER_INQUIRY
-      : isOfferPendingInNegotiationProcess
-      ? process.transitions.REQUEST_PAYMENT_TO_ACCEPT_OFFER
-      : process.transitions.REQUEST_PAYMENT;
+    const requestTransition = getRequestPaymentTransition(tx, process, processAlias);
     const isPrivileged = process.isPrivileged(requestTransition);
 
     fetchSpeculatedTransaction(
@@ -337,10 +327,9 @@ const handleSubmit = (values, process, props, stripe, submitting, setSubmitting)
 
   // Guard against listing price (or shipping/commission) changing between the
   // speculated breakdown and the real payment request.
-  const breakdownTx =
-    pageData?.transaction?.attributes?.lineItems?.length > 0
-      ? pageData.transaction
-      : speculatedTransaction;
+  const breakdownTx = hasFinalLineItems(pageData?.transaction)
+    ? pageData.transaction
+    : speculatedTransaction;
   const payinTotal = breakdownTx?.attributes?.payinTotal;
   const expectedPayinTotalMaybe =
     typeof payinTotal?.amount === 'number' && payinTotal?.currency
@@ -509,10 +498,7 @@ export const CheckoutPageWithPayment = props => {
 
   // If existing transaction has line-items, it has gone through one of the request-payment transitions.
   // Otherwise, we try to rely on speculatedTransaction for order breakdown data.
-  const tx =
-    existingTransaction?.attributes?.lineItems?.length > 0
-      ? existingTransaction
-      : speculatedTransaction;
+  const tx = hasFinalLineItems(existingTransaction) ? existingTransaction : speculatedTransaction;
   const timeZone = listing?.attributes?.availabilityPlan?.timezone;
   const transactionProcessAlias = listing?.attributes?.publicData?.transactionProcessAlias;
   const priceVariantName = tx.attributes.protectedData?.priceVariantName;

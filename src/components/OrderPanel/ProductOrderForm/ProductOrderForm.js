@@ -12,6 +12,7 @@ import {
   FieldTextInput,
   InlineTextButton,
   PrimaryButton,
+  SecondaryButton,
   H3,
   H6,
 } from '../../../components';
@@ -136,6 +137,8 @@ const renderForm = formRenderProps => {
     marketplaceName,
     values,
     sectionHeadingAs = 'h3',
+    onMakeOffer,
+    fixedQuantity,
   } = formRenderProps;
 
   // Note: don't add custom logic before useEffect
@@ -173,21 +176,36 @@ const renderForm = formRenderProps => {
   };
 
   // In case quantity and deliveryMethod are missing focus on that select-input.
-  // Otherwise continue with the default handleSubmit function.
-  const handleFormSubmit = e => {
+  // Returns true, if the order details are complete.
+  const validateOrderDetails = (e, requireDeliveryMethod = true) => {
     const { quantity, deliveryMethod } = values || {};
     if (!quantity || quantity < 1) {
       e.preventDefault();
       // Blur event will show validator message
       formApi.blur('quantity');
       formApi.focus('quantity');
-    } else if (displayDeliveryMethod && !deliveryMethod) {
+      return false;
+    } else if (requireDeliveryMethod && displayDeliveryMethod && !deliveryMethod) {
       e.preventDefault();
       // Blur event will show validator message
       formApi.blur('deliveryMethod');
       formApi.focus('deliveryMethod');
-    } else {
+      return false;
+    }
+    return true;
+  };
+
+  const handleFormSubmit = e => {
+    if (validateOrderDetails(e)) {
       handleSubmit(e);
+    }
+  };
+
+  // An offer is made for the selected quantity.
+  // Like with inquiries, the delivery method is chosen when the accepted offer is paid.
+  const handleMakeOffer = e => {
+    if (validateOrderDetails(e, false)) {
+      onMakeOffer({ quantity: Number.parseInt(values.quantity, 10) });
     }
   };
 
@@ -220,11 +238,12 @@ const renderForm = formRenderProps => {
 
   const submitInProgress = fetchLineItemsInProgress;
   const submitDisabled = !hasStock;
+  const showMakeOfferButton = typeof onMakeOffer === 'function' && hasStock && !isOwnListing;
 
   return (
     <Form onSubmit={handleFormSubmit}>
       <FormSpy subscription={{ values: true }} onChange={handleOnChange} />
-      {hasNoStockLeft ? null : hasOneItemLeft || !allowOrdersOfMultipleItems ? (
+      {hasNoStockLeft ? null : hasOneItemLeft || !allowOrdersOfMultipleItems || fixedQuantity ? (
         <FieldTextInput
           id={`${formId}.quantity`}
           className={css.quantityField}
@@ -288,6 +307,11 @@ const renderForm = formRenderProps => {
             <FormattedMessage id="ProductOrderForm.ctaButtonNoStock" />
           )}
         </PrimaryButton>
+        {showMakeOfferButton ? (
+          <SecondaryButton type="button" className={css.makeOfferButton} onClick={handleMakeOffer}>
+            <FormattedMessage id="ProductOrderForm.makeOfferButton" />
+          </SecondaryButton>
+        ) : null}
       </div>
       <p className={css.finePrint}>
         {payoutDetailsWarning ? (
@@ -326,6 +350,8 @@ const renderForm = formRenderProps => {
  * @param {boolean} props.fetchLineItemsInProgress - Whether the line items are being fetched
  * @param {propTypes.error} props.fetchLineItemsError - The error for fetching the line items
  * @param {Function} props.onContactUser - The function to contact the user
+ * @param {Function} [props.onMakeOffer] - Called with { quantity } when the customer wants to make an offer
+ * @param {number} [props.fixedQuantity] - Quantity that can't be changed (e.g. the quantity of an accepted offer)
  * @param {'h2'|'h3'} [props.sectionHeadingAs='h3'] - Semantic heading level for form section titles
  * @returns {JSX.Element}
  */
@@ -338,6 +364,7 @@ const ProductOrderForm = props => {
     shippingEnabled,
     displayDeliveryMethod,
     allowOrdersOfMultipleItems,
+    fixedQuantity,
   } = props;
 
   // Should not happen for listings that go through EditListingWizard.
@@ -352,7 +379,11 @@ const ProductOrderForm = props => {
 
   const hasOneItemLeft = currentStock && currentStock === 1;
   const hasOneItemMode = !allowOrdersOfMultipleItems && currentStock > 0;
-  const quantityMaybe = hasOneItemLeft || hasOneItemMode ? { quantity: '1' } : {};
+  const quantityMaybe = fixedQuantity
+    ? { quantity: `${fixedQuantity}` }
+    : hasOneItemLeft || hasOneItemMode
+    ? { quantity: '1' }
+    : {};
   const deliveryMethodMaybe =
     shippingEnabled && !pickupEnabled
       ? { deliveryMethod: 'shipping' }

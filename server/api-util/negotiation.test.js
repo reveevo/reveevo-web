@@ -5,6 +5,10 @@ const {
   throwErrorIfNegotiationOfferHasInvalidHistory,
   getAmountFromPreviousOffer,
   addOfferToMetadata,
+  isIntentionToPayAcceptedOffer,
+  getAcceptedOfferAmount,
+  getOfferOrderData,
+  pickOfferOrderData,
 } = require('./negotiation');
 
 describe('negotiation utils', () => {
@@ -709,6 +713,58 @@ describe('negotiation utils', () => {
         const result = addOfferToMetadata(undefined, mockOffer);
         expect(result).toEqual({});
       });
+    });
+  });
+
+  describe('default-purchase offers', () => {
+    const offers = [
+      { offerInSubunits: 8000, by: 'customer', transition: 'transition/customer-make-offer' },
+      {
+        offerInSubunits: 9000,
+        by: 'provider',
+        transition: 'transition/provider-make-counter-offer',
+      },
+    ];
+    const transitions = [
+      { transition: 'transition/customer-make-offer', by: 'customer' },
+      { transition: 'transition/provider-make-counter-offer', by: 'provider' },
+      { transition: 'transition/customer-accept-counter-offer', by: 'customer' },
+    ];
+
+    it('should recognize customer-make-offer as a make offer transition', () => {
+      expect(isIntentionToMakeOffer(8000, 'transition/customer-make-offer')).toBe(true);
+    });
+
+    it('should recognize the payment of an accepted offer', () => {
+      expect(isIntentionToPayAcceptedOffer('transition/request-payment-after-offer')).toBe(true);
+      expect(isIntentionToPayAcceptedOffer('transition/request-payment')).toBe(false);
+    });
+
+    it('should return the latest offer as the accepted amount', () => {
+      expect(getAcceptedOfferAmount(offers, transitions)).toBe(9000);
+    });
+
+    it('should throw if the offers do not match the transition history', () => {
+      expect(() => getAcceptedOfferAmount(offers.slice(0, 1), transitions)).toThrow(
+        'Accepted offer is missing or invalid'
+      );
+      expect(() => getAcceptedOfferAmount([], [])).toThrow('Accepted offer is missing or invalid');
+    });
+
+    it('should pick and validate the order details of an offer', () => {
+      expect(pickOfferOrderData({ stockReservationQuantity: 2, deliveryMethod: 'pickup' })).toEqual(
+        { stockReservationQuantity: 2 }
+      );
+      expect(() => pickOfferOrderData({ stockReservationQuantity: 0 })).toThrow(
+        'Offer is missing a valid quantity'
+      );
+      expect(() => pickOfferOrderData({})).toThrow('Offer is missing a valid quantity');
+    });
+
+    it('should read the saved quantity from metadata', () => {
+      const metadata = { offerOrderData: { stockReservationQuantity: 3 } };
+      expect(getOfferOrderData(metadata)).toEqual({ stockReservationQuantity: 3 });
+      expect(getOfferOrderData({})).toEqual({});
     });
   });
 });
