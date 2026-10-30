@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 
 // Import contexts and util modules
 import { FormattedMessage, intlShape } from '../../util/reactIntl';
@@ -11,6 +12,11 @@ import { propTypes } from '../../util/types';
 import { ensureTransaction } from '../../util/data';
 import { createSlug } from '../../util/urlHelpers';
 import {
+  getDeliveryAddress,
+  getDeliveryAddressFromFormValues,
+  isCompleteDeliveryAddress,
+} from '../../util/deliveryAddress';
+import {
   isTransactionInitiateListingNotFoundError,
   isTransactionsTransitionInvalidTransition,
 } from '../../util/errors';
@@ -20,6 +26,9 @@ import {
   NEGOTIATION_PROCESS_NAME,
   PURCHASE_PROCESS_NAME,
 } from '../../transactions/transaction';
+
+// Import global ducks
+import { saveDeliveryAddress } from '../../ducks/deliveryAddress.duck';
 
 // Import shared components
 import { H3, H4, NamedLink, OrderBreakdown, Page, TopbarSimplified } from '../../components';
@@ -42,6 +51,7 @@ import {
   setOrderPageInitialValues,
 } from './CheckoutPageTransactionHelpers.js';
 import { getErrorMessages } from './ErrorMessages';
+import DeliveryAddressStep from './DeliveryAddressStep/DeliveryAddressStep';
 
 import StripePaymentForm from './StripePaymentForm/StripePaymentForm';
 import DetailsSideCard from './DetailsSideCard';
@@ -219,6 +229,7 @@ export const loadInitialDataForStripePayments = ({
   fetchSpeculatedTransaction,
   fetchStripeCustomer,
   config,
+  currentUser,
 }) => {
   // Fetch currentUser with stripeCustomer entity
   // Note: since there's need for data loading in "componentWillMount" function,
@@ -231,6 +242,13 @@ export const loadInitialDataForStripePayments = ({
   const shippingDetails = {};
   const optionalPaymentParams = {};
   const orderParams = getOrderParams(pageData, shippingDetails, optionalPaymentParams, config);
+
+  // Shipping fee is calculated from the customer's delivery address.
+  // Without it, the price is fetched only after the address is saved (DeliveryAddressStep).
+  const isShipping = pageData?.orderData?.deliveryMethod === 'shipping';
+  if (isShipping && !isCompleteDeliveryAddress(getDeliveryAddress(currentUser))) {
+    return;
+  }
 
   fetchSpeculatedTransactionIfNeeded(orderParams, pageData, fetchSpeculatedTransaction);
 };
@@ -459,6 +477,10 @@ export const CheckoutPageWithPayment = props => {
   const [submitting, setSubmitting] = useState(false);
   // Initialized stripe library is saved to state - if it's needed at some point here too.
   const [stripe, setStripe] = useState(null);
+  const [isEditingDeliveryAddress, setEditingDeliveryAddress] = useState(false);
+  const { saveDeliveryAddressInProgress, saveDeliveryAddressError } = useSelector(
+    state => state.deliveryAddress
+  );
 
   const {
     scrollingDisabled,
@@ -480,6 +502,8 @@ export const CheckoutPageWithPayment = props => {
     transactionFieldConfigs = [],
     showTransactionFields,
     config,
+    dispatch,
+    fetchSpeculatedTransaction,
   } = props;
 
   // Since the listing data is already given from the ListingPage
@@ -526,10 +550,36 @@ export const CheckoutPageWithPayment = props => {
   const transitions = process.transitions;
   const isPaymentExpired = hasPaymentExpired(existingTransaction, process);
 
+  // Shipped purchases: step 1 is the delivery address (the shipping fee is calculated from it),
+  // step 2 is the payment. After the payment is initiated, the address can't be changed.
+  const hasPaymentIntents = !!existingTransaction?.attributes?.protectedData?.stripePaymentIntents;
+  const isShippingCheckout =
+    processName === PURCHASE_PROCESS_NAME &&
+    orderData?.deliveryMethod === 'shipping' &&
+    !hasPaymentIntents &&
+    !hasTransactionPassedPendingPayment(existingTransaction, process);
+  const deliveryAddress = getDeliveryAddress(currentUser);
+  const hasDeliveryAddress = isCompleteDeliveryAddress(deliveryAddress);
+  const showDeliveryAddressForm =
+    isShippingCheckout && (!hasDeliveryAddress || isEditingDeliveryAddress);
+
+  const handleSaveDeliveryAddress = values =>
+    dispatch(saveDeliveryAddress(getDeliveryAddressFromFormValues(values, currentUser)))
+      .then(() => {
+        setEditingDeliveryAddress(false);
+        // Fetch the price again: the shipping fee depends on the address.
+        const orderParams = getOrderParams(pageData, {}, {}, config);
+        fetchSpeculatedTransactionIfNeeded(orderParams, pageData, fetchSpeculatedTransaction);
+      })
+      .catch(() => {
+        // Error is shown by the form
+      });
+
   // Allow showing page when currentUser is still being downloaded,
   // but show payment form only when user info is loaded.
   const showPaymentForm = !!(
     currentUser &&
+    !showDeliveryAddressForm &&
     !listingNotFound &&
     !initiateOrderError &&
     !speculateTransactionError &&
@@ -579,9 +629,8 @@ export const CheckoutPageWithPayment = props => {
   // e.g. {country: 'FI'}
 
   const initialValuesForStripePayment = { name: userName, recipientName: userName };
-  const askShippingDetails =
-    orderData?.deliveryMethod === 'shipping' &&
-    !hasTransactionPassedPendingPayment(existingTransaction, process);
+  // The shipping address is given in DeliveryAddressStep (not in StripePaymentForm).
+  const askShippingDetails = false;
 
   const listingLocation = listing?.attributes?.publicData?.location;
   const showPickUpLocation = isPurchase && orderData?.deliveryMethod === 'pickup';
@@ -651,6 +700,18 @@ export const CheckoutPageWithPayment = props => {
             {errorMessages.speculateErrorMessage}
             {errorMessages.retrievePaymentIntentErrorMessage}
             {errorMessages.paymentExpiredMessage}
+
+            {isShippingCheckout && currentUser ? (
+              <DeliveryAddressStep
+                deliveryAddress={deliveryAddress}
+                currentUser={currentUser}
+                isEditing={showDeliveryAddressForm}
+                onEdit={() => setEditingDeliveryAddress(true)}
+                onSubmit={handleSaveDeliveryAddress}
+                inProgress={saveDeliveryAddressInProgress}
+                saveError={saveDeliveryAddressError}
+              />
+            ) : null}
 
             {showPaymentForm ? (
               <StripePaymentForm

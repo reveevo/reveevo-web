@@ -35,8 +35,9 @@ const getAcceptedOfferOrderDataMaybe = (sdk, offerTransactionId, listingId) => {
 
 module.exports = (req, res) => {
   const { isOwnListing, listingId, orderData } = req.body || {};
-  // The offer price is only ever set here on the server - ignore it if the client sends one.
-  const { offer, offerTransactionId, ...clientOrderData } = orderData || {};
+  // The offer price is only ever set on the server - ignore it if the client sends one.
+  // The shipping fee is calculated at checkout, so estimates here don't include it.
+  const { offer, shippingFee, offerTransactionId, ...clientOrderData } = orderData || {};
 
   const sdk = getSdk(req, res);
 

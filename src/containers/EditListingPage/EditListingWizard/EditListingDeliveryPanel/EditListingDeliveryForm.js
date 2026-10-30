@@ -3,7 +3,6 @@ import { Form as FinalForm } from 'react-final-form';
 import classNames from 'classnames';
 
 // Import configs and util modules
-import appSettings from '../../../../config/settings';
 import { FormattedMessage, useIntl } from '../../../../util/reactIntl';
 import { propTypes } from '../../../../util/types';
 import { displayDeliveryPickup, displayDeliveryShipping } from '../../../../util/configHelpers';
@@ -11,17 +10,17 @@ import {
   autocompleteSearchRequired,
   autocompletePlaceSelected,
   composeValidators,
-  required,
 } from '../../../../util/validators';
+import { isCompleteDeliveryAddress } from '../../../../util/deliveryAddress';
 
 // Import shared components
 import {
   Form,
   FieldLocationAutocompleteInput,
   Button,
-  FieldCurrencyInput,
   FieldTextInput,
   FieldCheckbox,
+  InlineTextButton,
 } from '../../../../components';
 
 // Import modules from this directory
@@ -49,6 +48,8 @@ const identity = v => v;
  * @param {propTypes.error} [props.fetchErrors.showListingsError] - The show listings error
  * @param {propTypes.error} [props.fetchErrors.updateListingError] - The update listing error
  * @param {boolean} props.autoFocus - Whether the form is auto focused
+ * @param {Object} [props.deliveryAddress] - Seller's saved delivery address (shipping starts from it)
+ * @param {Function} props.onOpenDeliveryAddressModal - Opens the modal for adding/editing the address
  * @returns {JSX.Element} The EditListingDeliveryForm component
  */
 export const EditListingDeliveryForm = props => (
@@ -66,9 +67,9 @@ export const EditListingDeliveryForm = props => (
         pristine,
         invalid,
         listingTypeConfig,
-        marketplaceCurrency,
-        allowOrdersOfMultipleItems = false,
         saveActionMsg,
+        deliveryAddress,
+        onOpenDeliveryAddressModal,
         updated,
         updateInProgress,
         fetchErrors,
@@ -112,8 +113,15 @@ export const EditListingDeliveryForm = props => (
       const classes = classNames(css.root, className);
       const submitReady = (updated && pristine) || ready;
       const submitInProgress = updateInProgress;
+      // Shipping is arranged by Reveevo: the fee is calculated from the seller's address,
+      // so the address is required for shipping.
+      const hasDeliveryAddress = isCompleteDeliveryAddress(deliveryAddress);
       const submitDisabled =
-        invalid || disabled || submitInProgress || (!shippingEnabled && !pickupEnabled);
+        invalid ||
+        disabled ||
+        submitInProgress ||
+        (!shippingEnabled && !pickupEnabled) ||
+        (shippingEnabled && !hasDeliveryAddress);
 
       const shippingLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.shippingLabel' });
       const pickupLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.pickupLabel' });
@@ -128,7 +136,10 @@ export const EditListingDeliveryForm = props => (
         [css.disabled]: !shippingEnabled,
         [css.hidden]: !displayShipping,
       });
-      const currencyConfig = appSettings.getCurrencyFormatting(marketplaceCurrency);
+      const openDeliveryAddressModal = e => {
+        e.preventDefault();
+        onOpenDeliveryAddressModal();
+      };
 
       return (
         <Form className={classes} onSubmit={handleSubmit}>
@@ -212,77 +223,34 @@ export const EditListingDeliveryForm = props => (
           />
 
           <div className={shippingClasses}>
-            <FieldCurrencyInput
-              id={
-                formId
-                  ? `${formId}.shippingPriceInSubunitsOneItem`
-                  : 'shippingPriceInSubunitsOneItem'
-              }
-              name="shippingPriceInSubunitsOneItem"
-              className={css.input}
-              label={intl.formatMessage({
-                id: 'EditListingDeliveryForm.shippingOneItemLabel',
-              })}
-              placeholder={intl.formatMessage({
-                id: 'EditListingDeliveryForm.shippingOneItemPlaceholder',
-              })}
-              currencyConfig={currencyConfig}
-              disabled={!shippingEnabled}
-              validate={
-                shippingEnabled
-                  ? required(
-                      intl.formatMessage({
-                        id: 'EditListingDeliveryForm.shippingOneItemRequired',
-                      })
-                    )
-                  : null
-              }
-              hideErrorMessage={!shippingEnabled}
-              // Whatever parameters are being used to calculate
-              // the validation function need to be combined in such
-              // a way that, when they change, this key prop
-              // changes, thus reregistering this field (and its
-              // validation function) with Final Form.
-              // See example: https://codesandbox.io/s/changing-field-level-validators-zc8ei
-              key={shippingEnabled ? 'oneItemValidation' : 'noOneItemValidation'}
-            />
-
-            {allowOrdersOfMultipleItems ? (
-              <FieldCurrencyInput
-                id={
-                  formId
-                    ? `${formId}.shippingPriceInSubunitsAdditionalItems`
-                    : 'shippingPriceInSubunitsAdditionalItems'
-                }
-                name="shippingPriceInSubunitsAdditionalItems"
-                className={css.input}
-                label={intl.formatMessage({
-                  id: 'EditListingDeliveryForm.shippingAdditionalItemsLabel',
-                })}
-                placeholder={intl.formatMessage({
-                  id: 'EditListingDeliveryForm.shippingAdditionalItemsPlaceholder',
-                })}
-                currencyConfig={currencyConfig}
-                disabled={!shippingEnabled}
-                validate={
-                  shippingEnabled
-                    ? required(
-                        intl.formatMessage({
-                          id: 'EditListingDeliveryForm.shippingAdditionalItemsRequired',
-                        })
-                      )
-                    : null
-                }
-                hideErrorMessage={!shippingEnabled}
-                // Whatever parameters are being used to calculate
-                // the validation function need to be combined in such
-                // a way that, when they change, this key prop
-                // changes, thus reregistering this field (and its
-                // validation function) with Final Form.
-                // See example: https://codesandbox.io/s/changing-field-level-validators-zc8ei
-                key={shippingEnabled ? 'additionalItemsValidation' : 'noAdditionalItemsValidation'}
-              />
-            ) : null}
+            <p className={css.shippingInfo}>
+              <FormattedMessage id="EditListingDeliveryForm.shippingInfo" />
+            </p>
+            {hasDeliveryAddress ? (
+              <p className={css.shippingAddress}>
+                <FormattedMessage
+                  id="EditListingDeliveryForm.shippingFrom"
+                  values={{
+                    address: deliveryAddress.address,
+                    neighborhood: deliveryAddress.neighborhood,
+                  }}
+                />{' '}
+                <InlineTextButton type="button" onClick={openDeliveryAddressModal}>
+                  <FormattedMessage id="EditListingDeliveryForm.editAddress" />
+                </InlineTextButton>
+              </p>
+            ) : (
+              <p className={css.shippingAddressMissing}>
+                <FormattedMessage id="EditListingDeliveryForm.shippingAddressMissing" />{' '}
+                <InlineTextButton
+                  type="button"
+                  onClick={openDeliveryAddressModal}
+                  disabled={!shippingEnabled}
+                >
+                  <FormattedMessage id="EditListingDeliveryForm.addAddress" />
+                </InlineTextButton>
+              </p>
+            )}
           </div>
 
           <Button

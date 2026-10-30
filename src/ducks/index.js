@@ -5,6 +5,7 @@
  */
 
 import auth from './auth.duck';
+import deliveryAddress from './deliveryAddress.duck';
 import emailVerification from './emailVerification.duck';
 import routing from './routing.duck';
 import ui from './ui.duck';
@@ -18,6 +19,7 @@ import user from './user.duck';
 
 export {
   auth,
+  deliveryAddress,
   emailVerification,
   routing,
   ui,

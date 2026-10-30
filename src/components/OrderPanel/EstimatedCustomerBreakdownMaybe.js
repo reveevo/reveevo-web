@@ -121,7 +121,15 @@ const estimatedCustomerTransaction = (
 };
 
 const EstimatedCustomerBreakdownMaybe = props => {
-  const { breakdownData = {}, lineItems, timeZone, currency, marketplaceName, processName } = props;
+  const {
+    breakdownData = {},
+    lineItems,
+    timeZone,
+    currency,
+    marketplaceName,
+    processName,
+    showShippingAtCheckout,
+  } = props;
   const { startDate, endDate } = breakdownData;
 
   let process = null;
@@ -166,6 +174,7 @@ const EstimatedCustomerBreakdownMaybe = props => {
       timeZone={timeZone}
       currency={currency}
       marketplaceName={marketplaceName}
+      showShippingAtCheckout={showShippingAtCheckout}
     />
   ) : null;
 };

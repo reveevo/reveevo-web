@@ -146,6 +146,7 @@ export { default as TopbarSimplified } from './TopbarSimplified/TopbarSimplified
 
 // Forms
 export { default as StripeConnectAccountForm } from './StripeConnectAccountForm/StripeConnectAccountForm';
+export { default as DeliveryAddressForm } from './DeliveryAddressForm/DeliveryAddressForm';
 
 //////////////////////////////////////////////
 // Page sections and modal content wrappers //

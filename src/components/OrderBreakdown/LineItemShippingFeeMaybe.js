@@ -11,22 +11,31 @@ import css from './OrderBreakdown.module.css';
  * @component
  * @param {Object} props
  * @param {Array<propTypes.lineItem>} props.lineItems - The line items to render
+ * @param {boolean} [props.showShippingAtCheckout] - Show "calculated at checkout" if there's no fee yet
  * @param {intlShape} props.intl - The intl object
  * @returns {JSX.Element}
  */
 const LineItemShippingFeeMaybe = props => {
-  const { lineItems, intl } = props;
+  const { lineItems, showShippingAtCheckout = false, intl } = props;
 
   const shippingFeeLineItem = lineItems.find(
     item => item.code === LINE_ITEM_SHIPPING_FEE && !item.reversal
   );
 
-  return shippingFeeLineItem ? (
+  // Shipping fee is calculated at checkout (it depends on the buyer's address),
+  // so estimates before that show a placeholder row.
+  return shippingFeeLineItem || showShippingAtCheckout ? (
     <div className={css.lineItem}>
       <span className={css.itemLabel}>
         <FormattedMessage id="OrderBreakdown.shippingFee" />
       </span>
-      <span className={css.itemValue}>{formatMoney(intl, shippingFeeLineItem.lineTotal)}</span>
+      <span className={css.itemValue}>
+        {shippingFeeLineItem ? (
+          formatMoney(intl, shippingFeeLineItem.lineTotal)
+        ) : (
+          <FormattedMessage id="OrderBreakdown.shippingFeeAtCheckout" />
+        )}
+      </span>
     </div>
   ) : null;
 };

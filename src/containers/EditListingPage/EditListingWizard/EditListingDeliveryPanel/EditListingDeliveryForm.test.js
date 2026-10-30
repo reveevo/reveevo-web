@@ -1,4 +1,4 @@
-import React, { act } from 'react';
+import React from 'react';
 import '@testing-library/jest-dom';
 
 import { fakeIntl } from '../../../../util/testData';
@@ -10,44 +10,55 @@ const { screen, userEvent } = testingLibrary;
 
 const noop = () => null;
 
+const deliveryAddress = {
+  address: 'Calle Colima 123, Roma Norte, Ciudad de México',
+  origin: { lat: 19.42, lng: -99.16 },
+  neighborhood: 'Roma Norte',
+  details: '',
+  countryCode: 'MX',
+  phoneNumber: '+52 55 1234 5678',
+};
+
+const renderForm = props =>
+  render(
+    <EditListingDeliveryForm
+      intl={fakeIntl}
+      dispatch={noop}
+      onSubmit={noop}
+      saveActionMsg="Save location"
+      updated={false}
+      updateInProgress={false}
+      disabled={false}
+      ready={false}
+      onOpenDeliveryAddressModal={noop}
+      {...props}
+    />
+  );
+
 describe('EditListingDeliveryForm', () => {
-  it('Check that shipping fees can be given and submit button activates', async () => {
+  it('Shipping needs the seller address before the form can be saved', async () => {
     const user = userEvent.setup();
-    const saveActionMsg = 'Save location';
-    render(
-      <EditListingDeliveryForm
-        intl={fakeIntl}
-        dispatch={noop}
-        onSubmit={noop}
-        saveActionMsg={saveActionMsg}
-        marketplaceCurrency="USD"
-        allowOrdersOfMultipleItems={true}
-        updated={false}
-        updateInProgress={false}
-        disabled={false}
-        ready={false}
-      />
-    );
+    renderForm();
 
     // Pickup fields
-    const address = 'EditListingDeliveryForm.address';
-    expect(screen.getByText(address)).toBeInTheDocument();
-
-    const building = 'EditListingDeliveryForm.building';
-    expect(screen.getByText(building)).toBeInTheDocument();
+    expect(screen.getByText('EditListingDeliveryForm.address')).toBeInTheDocument();
+    expect(screen.getByText('EditListingDeliveryForm.building')).toBeInTheDocument();
 
     // Test that save button is disabled at first
-    expect(screen.getByRole('button', { name: saveActionMsg })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save location' })).toBeDisabled();
 
-    // Add shipping price
+    // Shipping without an address: seller is asked to add the address
     await user.click(screen.getByLabelText(/EditListingDeliveryForm.shippingLabel/i));
+    expect(screen.getByText('EditListingDeliveryForm.shippingAddressMissing')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save location' })).toBeDisabled();
+  });
 
-    const shippingOneItemLabel = 'EditListingDeliveryForm.shippingOneItemLabel';
-    const shippingAdditionalItemsLabel = 'EditListingDeliveryForm.shippingAdditionalItemsLabel';
-    await user.type(screen.getByRole('textbox', { name: shippingOneItemLabel }), '10');
-    await user.type(screen.getByRole('textbox', { name: shippingAdditionalItemsLabel }), '5');
+  it('Shipping with the seller address can be saved', async () => {
+    const user = userEvent.setup();
+    renderForm({ deliveryAddress });
 
-    // Test that save button is enabled
-    expect(screen.getByRole('button', { name: saveActionMsg })).toBeEnabled();
+    await user.click(screen.getByLabelText(/EditListingDeliveryForm.shippingLabel/i));
+    expect(screen.getByText('EditListingDeliveryForm.shippingFrom')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save location' })).toBeEnabled();
   });
 });

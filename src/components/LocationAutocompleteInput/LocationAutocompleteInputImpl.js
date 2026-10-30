@@ -361,10 +361,12 @@ class LocationAutocompleteInputImplementation extends Component {
   predict(search) {
     const config = this.props.config;
     const onChange = this.props.input.onChange;
+    // A field can limit its predictions to some countries (e.g. delivery address: only Mexico).
+    const countryLimit = this.props.countryLimit || config.maps.search.countryLimit;
     this.setState({ fetchingPredictions: true });
 
     return this.getGeocoder()
-      .getPlacePredictions(search, config.maps.search.countryLimit, config.localization.locale)
+      .getPlacePredictions(search, countryLimit, config.localization.locale)
       .then(results => {
         const { search: currentSearch } = currentValue(this.props);
         this.setState({ fetchingPredictions: false });

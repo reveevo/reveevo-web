@@ -21,10 +21,12 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
+const { getShippingQuote, needsShippingQuote } = require('../services/shipping');
 
 const { Money } = sharetribeSdk.types;
 
-const transactionPromise = (sdk, id) => sdk.transactions.show({ id, include: ['listing'] });
+const transactionPromise = (sdk, id) =>
+  sdk.transactions.show({ id, include: ['listing', 'provider'] });
 const getListingRelationShip = transactionShowAPIData => {
   const { data, included } = transactionShowAPIData;
   const { relationships } = data;
@@ -145,9 +147,10 @@ module.exports = (req, res) => {
   let lineItems = null;
   let metadataMaybe = {};
   let trustedBodyParams = bodyParams;
+  let deliveryMaybe = {};
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
-    .then(responses => {
+    .then(async responses => {
       const [showTransactionResponse, fetchAssetsResponse] = responses;
       const transaction = showTransactionResponse.data.data;
       const listing = getListingRelationShip(showTransactionResponse.data);
@@ -167,21 +170,36 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      // The offer price is only ever set here on the server - ignore it if the client sends one.
-      const { offer, ...clientOrderData } = orderData || {};
+      // The offer price and the shipping fee are only ever set here on the server.
+      // Ignore them if the client sends them.
+      const { offer, shippingFee, ...clientOrderData } = orderData || {};
       const offerOrderData = getOfferOrderData(existingMetadata);
-      const trustedOrderData = { ...clientOrderData, ...offerOrderData };
       trustedBodyParams = getBodyParamsWithOfferOrderData(bodyParams, offerOrderData);
+
+      // Shipped purchases: the fee depends on the vehicle and the distance between the parties.
+      const shippingQuote = needsShippingQuote(transitionName, clientOrderData)
+        ? await getShippingQuote({
+            sdk,
+            listing,
+            providerId: transaction.relationships?.provider?.data?.id,
+          })
+        : null;
+      deliveryMaybe = shippingQuote ? { delivery: shippingQuote.delivery } : {};
+      const trustedOrderData = { ...clientOrderData, ...offerOrderData };
 
       lineItems = transactionLineItems(
         listing,
-        getFullOrderData(
-          trustedOrderData,
-          trustedBodyParams,
-          currency,
-          existingOffers,
-          transitions
-        ),
+        {
+          ...getFullOrderData(
+            trustedOrderData,
+            trustedBodyParams,
+            currency,
+            existingOffers,
+            transitions
+          ),
+          // Shipping fee is set last, so that client's params can't override it.
+          shippingFee: shippingQuote?.shippingFee,
+        },
         providerCommission,
         customerCommission
       );
@@ -203,12 +221,17 @@ module.exports = (req, res) => {
       const roleBasedBodyParams = getRoleBasedBodyParams(orderData, trustedBodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
+      // Both delivery addresses are saved to the transaction, so that both parties see them.
+      const protectedDataMaybe = Object.keys(deliveryMaybe).length
+        ? { protectedData: { ...restParams.protectedData, ...deliveryMaybe } }
+        : {};
 
       // Add lineItems to the body params
       const body = {
         ...trustedBodyParams,
         params: {
           ...restParams,
+          ...protectedDataMaybe,
           lineItems,
           ...metadataMaybe,
         },

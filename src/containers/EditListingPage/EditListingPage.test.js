@@ -845,12 +845,9 @@ describe('EditListingPage', () => {
       expect(
         getByRole('checkbox', { name: /EditListingDeliveryForm.shippingLabel/i })
       ).not.toBeChecked();
-      expect(
-        getByRole('textbox', { name: 'EditListingDeliveryForm.shippingOneItemLabel' })
-      ).toBeDisabled();
-      expect(
-        getByRole('textbox', { name: 'EditListingDeliveryForm.shippingAdditionalItemsLabel' })
-      ).toBeDisabled();
+      // Shipping fee is calculated by Reveevo: the seller only needs an address
+      expect(getByText('EditListingDeliveryForm.shippingInfo')).toBeInTheDocument();
+      expect(getByRole('button', { name: 'EditListingDeliveryForm.addAddress' })).toBeDisabled();
 
       expect(
         getByRole('button', { name: 'EditListingWizard.edit.saveDelivery' })
@@ -861,12 +858,7 @@ describe('EditListingPage', () => {
     await user.click(getByRole('checkbox', { name: /EditListingDeliveryForm.shippingLabel/i }));
 
     expect(getByRole('checkbox', { name: /EditListingDeliveryForm.shippingLabel/i })).toBeChecked();
-    expect(
-      getByRole('textbox', { name: 'EditListingDeliveryForm.shippingOneItemLabel' })
-    ).toBeEnabled();
-    expect(
-      getByRole('textbox', { name: 'EditListingDeliveryForm.shippingAdditionalItemsLabel' })
-    ).toBeEnabled();
+    expect(getByRole('button', { name: 'EditListingDeliveryForm.addAddress' })).toBeEnabled();
   });
 
   it('Purchase: edit flow on photos tab', async () => {
@@ -1126,12 +1118,7 @@ describe('EditListingPage', () => {
       expect(
         getByRole('checkbox', { name: /EditListingDeliveryForm.shippingLabel/i })
       ).toBeChecked();
-      expect(
-        getByRole('textbox', { name: 'EditListingDeliveryForm.shippingOneItemLabel' })
-      ).toBeInTheDocument();
-      expect(
-        getByRole('textbox', { name: 'EditListingDeliveryForm.shippingAdditionalItemsLabel' })
-      ).toBeInTheDocument();
+      expect(getByText('EditListingDeliveryForm.shippingInfo')).toBeInTheDocument();
 
       expect(
         getByRole('button', { name: 'EditListingWizard.edit.saveDelivery' })

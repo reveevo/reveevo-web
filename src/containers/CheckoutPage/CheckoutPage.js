@@ -234,6 +234,7 @@ const CheckoutPage = props => {
           fetchSpeculatedTransaction,
           fetchStripeCustomer,
           config,
+          currentUser,
         });
       }
     }

@@ -43,6 +43,7 @@ export const OrderBreakdownComponent = props => {
     timeZone,
     currency,
     marketplaceName,
+    showShippingAtCheckout = false,
     intl,
   } = props;
 
@@ -114,7 +115,11 @@ export const OrderBreakdownComponent = props => {
       />
 
       <LineItemBasePriceMaybe lineItems={lineItems} code={lineItemUnitType} intl={intl} />
-      <LineItemShippingFeeMaybe lineItems={lineItems} intl={intl} />
+      <LineItemShippingFeeMaybe
+        lineItems={lineItems}
+        showShippingAtCheckout={showShippingAtCheckout}
+        intl={intl}
+      />
       <LineItemPickupFeeMaybe lineItems={lineItems} intl={intl} />
       <LineItemUnknownItemsMaybe lineItems={lineItems} isProvider={isProvider} intl={intl} />
 

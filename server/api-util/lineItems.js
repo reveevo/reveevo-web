@@ -1,7 +1,6 @@
 const {
   calculateQuantityFromDates,
   calculateQuantityFromHours,
-  calculateShippingFee,
   getProviderCommissionMaybe,
   getCustomerCommissionMaybe,
 } = require('./lineItemHelpers');
@@ -11,38 +10,27 @@ const { Money } = types;
 /**
  * Get quantity and add extra line-items that are related to delivery method
  *
+ * Shipping is arranged by the marketplace: the fee is calculated on the server from the vehicle
+ * and the distance (see server/services/shipping) and passed here as orderData.shippingFee.
+ * The fee is paid by the customer and it's not included in the provider's payout.
+ *
  * @param {Object} orderData should contain stockReservationQuantity and deliveryMethod
- * @param {*} publicData should contain shipping prices
- * @param {*} currency should point to the currency of listing's price.
+ * @param {Money} [orderData.shippingFee] shipping fee calculated on the server
  */
-const getItemQuantityAndLineItems = (orderData, publicData, currency) => {
-  // Check delivery method and shipping prices
+const getItemQuantityAndLineItems = orderData => {
   const quantity = orderData ? orderData.stockReservationQuantity : null;
-  const deliveryMethod = orderData && orderData.deliveryMethod;
-  const isShipping = deliveryMethod === 'shipping';
-  const isPickup = deliveryMethod === 'pickup';
-  const { shippingPriceInSubunitsOneItem, shippingPriceInSubunitsAdditionalItems } =
-    publicData || {};
+  const isShipping = orderData?.deliveryMethod === 'shipping';
+  const shippingFee =
+    isShipping && orderData?.shippingFee instanceof Money ? orderData.shippingFee : null;
 
-  // Calculate shipping fee if applicable
-  const shippingFee = isShipping
-    ? calculateShippingFee(
-        shippingPriceInSubunitsOneItem,
-        shippingPriceInSubunitsAdditionalItems,
-        currency,
-        quantity
-      )
-    : null;
-
-  // Add line-item for given delivery method.
   // Note: by default, pickup considered as free and, therefore, we don't add pickup fee line-item
-  const deliveryLineItem = !!shippingFee
+  const deliveryLineItem = shippingFee
     ? [
         {
           code: 'line-item/shipping-fee',
           unitPrice: shippingFee,
           quantity: 1,
-          includeFor: ['customer', 'provider'],
+          includeFor: ['customer'],
         },
       ]
     : [];
@@ -188,7 +176,7 @@ exports.transactionLineItems = (listing, orderData, providerCommission, customer
   // E.g. by default, "shipping-fee" is tied to 'item' aka buying products.
   const quantityAndExtraLineItems =
     unitType === 'item'
-      ? getItemQuantityAndLineItems(orderData, publicData, currency)
+      ? getItemQuantityAndLineItems(orderData)
       : unitType === 'file'
       ? getDigitalItemQuantityAndLineItems(orderData)
       : unitType === 'fixed'

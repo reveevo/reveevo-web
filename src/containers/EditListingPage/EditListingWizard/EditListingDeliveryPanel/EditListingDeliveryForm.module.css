@@ -69,6 +69,20 @@
   /* border-bottom-color: var(--colorSuccess); */
 }
 
+.shippingInfo {
+  margin: 0 0 12px 0;
+  color: var(--colorGrey700);
+}
+
+.shippingAddress {
+  margin: 0 0 24px 0;
+}
+
+.shippingAddressMissing {
+  margin: 0 0 24px 0;
+  color: var(--colorFail);
+}
+
 .input {
   flex-shrink: 0;
   margin-bottom: 24px;

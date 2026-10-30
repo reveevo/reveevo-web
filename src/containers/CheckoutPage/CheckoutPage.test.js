@@ -135,6 +135,21 @@ describe('CheckoutPage', () => {
         lineItems: lineItems.concat(shippingFeeLineItem),
         total: new Money(2500, 'USD'),
       }),
+      currentUser: createCurrentUser('currentUser', {
+        profile: {
+          displayName: 'currentUser display name',
+          privateData: {
+            deliveryAddress: {
+              address: 'Calle Colima 123, Ciudad de México',
+              origin: { lat: 19.42, lng: -99.16 },
+              neighborhood: 'Roma Norte',
+              details: 'Apartment 4',
+              countryCode: 'MX',
+              phoneNumber: '+52 55 1234 5678',
+            },
+          },
+        },
+      }),
     };
 
     render(<CheckoutPageWithPayment {...props} />);
@@ -150,15 +165,14 @@ describe('CheckoutPage', () => {
 
     const getTextbox = name => screen.getByRole('textbox', { name });
 
-    const shippingHeading = 'ShippingDetails.title';
-    expect(screen.getByRole('heading', { name: shippingHeading })).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.recipientNameLabel')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.recipientPhoneNumberLabel')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.addressLine1Label')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.addressLine2Label')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.postalCodeLabel')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.cityLabel')).toBeInTheDocument();
-    expect(getTextbox('ShippingDetails.stateLabel')).toBeInTheDocument();
+    // Step 1: saved delivery address (shipping fee is calculated from it)
+    const addressHeading = 'CheckoutPage.DeliveryAddressStep.heading';
+    expect(screen.getByRole('heading', { name: addressHeading })).toBeInTheDocument();
+    expect(screen.getByText(/Calle Colima 123/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'CheckoutPage.DeliveryAddressStep.edit' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'ShippingDetails.title' })).toBeNull();
 
     const paymentHeading = 'StripePaymentForm.paymentHeading';
     expect(screen.getByRole('heading', { name: paymentHeading })).toBeInTheDocument();
@@ -176,6 +190,32 @@ describe('CheckoutPage', () => {
     expect(
       screen.getByRole('button', { name: 'StripePaymentForm.submitPaymentInfo' })
     ).toBeInTheDocument();
+  });
+
+  it('Shipped purchase asks the delivery address before payment', () => {
+    const listing = createListing(
+      'listing1',
+      { publicData: { transactionProcessAlias: 'default-purchase/release-1', unitType: 'item' } },
+      { author: createUser('author'), images: [createImage('first-image')] }
+    );
+    const props = {
+      ...commonProps,
+      pageData: {
+        orderData: { quantity: 1, deliveryMethod: 'shipping' },
+        listing,
+      },
+      processName: 'default-purchase',
+      listingTitle: listing.attributes.title,
+      title: 'CheckoutPage.default-purchase.title',
+      speculatedTransaction: null,
+    };
+
+    render(<CheckoutPageWithPayment {...props} />);
+
+    const addressHeading = 'CheckoutPage.DeliveryAddressStep.heading';
+    expect(screen.getByRole('heading', { name: addressHeading })).toBeInTheDocument();
+    expect(screen.getByText('DeliveryAddressForm.neighborhoodLabel')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'StripePaymentForm.paymentHeading' })).toBeNull();
   });
 
   it('Check that booking has relevant info', () => {

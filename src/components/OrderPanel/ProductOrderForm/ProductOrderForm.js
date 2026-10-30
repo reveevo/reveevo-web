@@ -293,6 +293,7 @@ const renderForm = formRenderProps => {
             currency={price.currency}
             marketplaceName={marketplaceName}
             processName={PURCHASE_PROCESS_NAME}
+            showShippingAtCheckout={values?.deliveryMethod === 'shipping'}
           />
         </div>
       ) : null}

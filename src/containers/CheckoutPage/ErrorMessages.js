@@ -13,8 +13,13 @@ import {
   transactionInitiateOrderStripeErrors,
   isProviderCommissionBiggerThanMinPrice,
 } from '../../util/errors';
+import { SHIPPING_ERROR_CODES } from '../../util/deliveryAddress';
 
 import css from './CheckoutPage.module.css';
+
+// Shipping quote errors (e.g. no address or too far) have the error code in statusText.
+const getShippingErrorCode = error =>
+  Object.values(SHIPPING_ERROR_CODES).find(code => code === error?.statusText);
 
 // Collect error message checks to a single function.
 export const getErrorMessages = (
@@ -33,8 +38,15 @@ export const getErrorMessages = (
   const isChargeDisabledError = isTransactionChargeDisabledError(initiateOrderError);
   const stripeErrors = transactionInitiateOrderStripeErrors(initiateOrderError);
 
+  const initiateShippingErrorCode = getShippingErrorCode(initiateOrderError);
+  const speculateShippingErrorCode = getShippingErrorCode(speculateTransactionError);
+
   // We want to show one error at a time for the real transition
-  if (listingNotFound) {
+  if (initiateShippingErrorCode) {
+    initiateOrderErrorMessage = (
+      <FormattedMessage id={`CheckoutPage.shippingError.${initiateShippingErrorCode}`} />
+    );
+  } else if (listingNotFound) {
     listingNotFoundErrorMessage = <FormattedMessage id="CheckoutPage.listingNotFoundError" />;
   } else if (isAmountTooLowError) {
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.initiateOrderAmountTooLow" />;
@@ -85,7 +97,11 @@ export const getErrorMessages = (
   }
 
   // We want to show one error at a time for speculateTransition
-  if (isTransactionInitiateMissingStripeAccountError(speculateTransactionError)) {
+  if (speculateShippingErrorCode) {
+    speculateErrorMessage = (
+      <FormattedMessage id={`CheckoutPage.shippingError.${speculateShippingErrorCode}`} />
+    );
+  } else if (isTransactionInitiateMissingStripeAccountError(speculateTransactionError)) {
     speculateErrorMessage = (
       <FormattedMessage id="CheckoutPage.providerStripeAccountMissingError" />
     );

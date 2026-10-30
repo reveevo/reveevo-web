@@ -394,6 +394,7 @@ describe('transactionLineItems', () => {
         stockReservationQuantity: 3,
         deliveryMethod: 'shipping',
         currency: 'EUR',
+        shippingFee: new Money(900, 'EUR'), // calculated on the server (vehicle × distance)
       };
 
       const result = transactionLineItems(
@@ -416,13 +417,13 @@ describe('transactionLineItems', () => {
       // Check shipping line item
       expect(result[1]).toEqual({
         code: 'line-item/shipping-fee',
-        unitPrice: new Money(900, 'EUR'), // €5.00 + (2 * €2.00) = €9.00
+        unitPrice: new Money(900, 'EUR'),
         quantity: 1,
-        includeFor: ['customer', 'provider'],
+        includeFor: ['customer'],
       });
     });
 
-    it('should create line items for single item purchase with shipping', () => {
+    it('should not add shipping fee if it was not calculated on the server', () => {
       const listing = {
         ...mockListing,
         attributes: {
@@ -430,8 +431,7 @@ describe('transactionLineItems', () => {
           publicData: {
             ...mockListing.attributes.publicData,
             unitType: 'item',
-            shippingPriceInSubunitsOneItem: 500, // €5.00
-            shippingPriceInSubunitsAdditionalItems: 200, // €2.00
+            shippingPriceInSubunitsOneItem: 500, // €5.00 (not used anymore)
           },
         },
       };
@@ -449,15 +449,8 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(4); // order + shipping + provider commission + customer commission
-
-      // Check shipping line item for single item
-      expect(result[1]).toEqual({
-        code: 'line-item/shipping-fee',
-        unitPrice: new Money(500, 'EUR'), // €5.00 for first item only
-        quantity: 1,
-        includeFor: ['customer', 'provider'],
-      });
+      expect(result).toHaveLength(3); // order + provider commission + customer commission
+      expect(result.find(item => item.code === 'line-item/shipping-fee')).toBeUndefined();
     });
   });
 
@@ -481,6 +474,7 @@ describe('transactionLineItems', () => {
         deliveryMethod: 'shipping',
         currency: 'EUR',
         offer: new Money(8000, 'EUR'), // €80.00 per item
+        shippingFee: new Money(700, 'EUR'),
       };
 
       const result = transactionLineItems(

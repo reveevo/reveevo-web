@@ -63,6 +63,38 @@ const placeBounds = prediction => {
   return null;
 };
 
+/**
+ * Neighborhood of the place (e.g. "Wedding" for an address in Berlin, or the colonia in Mexico).
+ * Mapbox lists the parent areas of a place in its context. Neighborhood is the most accurate one,
+ * but not all places have it, so locality is used as a fallback.
+ *
+ * @param {Object} prediction Mapbox geocoding feature
+ * @returns {string|null}
+ */
+const placeNeighborhood = prediction => {
+  const placeTypes = prediction?.place_type || [];
+  if (placeTypes.includes('neighborhood') || placeTypes.includes('locality')) {
+    return prediction.text || null;
+  }
+  const context = prediction?.context || [];
+  const findContext = type => context.find(c => c.id?.startsWith(`${type}.`))?.text;
+  return findContext('neighborhood') || findContext('locality') || null;
+};
+
+/**
+ * Country of the place as ISO 3166-1 alpha-2 code (e.g. 'MX').
+ *
+ * @param {Object} prediction Mapbox geocoding feature
+ * @returns {string|null}
+ */
+const placeCountryCode = prediction => {
+  const isCountry = prediction?.place_type?.includes('country');
+  const shortCode = isCountry
+    ? prediction.properties?.short_code
+    : (prediction?.context || []).find(c => c.id?.startsWith('country.'))?.short_code;
+  return shortCode ? shortCode.toUpperCase() : null;
+};
+
 export const GeocoderAttribution = () => null;
 
 /**
@@ -163,6 +195,8 @@ class GeocoderMapbox {
       address: this.getPredictionAddress(prediction),
       origin: placeOrigin(prediction),
       bounds: placeBounds(prediction),
+      neighborhood: placeNeighborhood(prediction),
+      countryCode: placeCountryCode(prediction),
     });
   }
 }

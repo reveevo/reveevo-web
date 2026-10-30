@@ -15,3 +15,12 @@
 .priceCurrencyInvalid {
   color: var(--colorFail);
 }
+
+.modalHeading {
+  margin: 0;
+}
+
+.modalDescription {
+  margin: 12px 0 32px 0;
+  color: var(--colorGrey700);
+}

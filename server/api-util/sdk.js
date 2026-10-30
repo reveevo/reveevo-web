@@ -3,6 +3,7 @@ const https = require('https');
 const Decimal = require('decimal.js');
 const log = require('../log');
 const sharetribeSdk = require('sharetribe-flex-sdk');
+const sharetribeIntegrationSdk = require('sharetribe-flex-integration-sdk');
 
 const CLIENT_ID = process.env.REACT_APP_SHARETRIBE_SDK_CLIENT_ID;
 const CLIENT_SECRET = process.env.SHARETRIBE_SDK_CLIENT_SECRET;
@@ -13,6 +14,8 @@ const MAX_SOCKETS_DEFAULT = 10;
 
 const BASE_URL = process.env.REACT_APP_SHARETRIBE_SDK_BASE_URL;
 const ASSET_CDN_BASE_URL = process.env.REACT_APP_SHARETRIBE_SDK_ASSET_CDN_BASE_URL;
+const INTEGRATION_CLIENT_ID = process.env.SHARETRIBE_INTEGRATION_SDK_CLIENT_ID;
+const INTEGRATION_CLIENT_SECRET = process.env.SHARETRIBE_INTEGRATION_SDK_CLIENT_SECRET;
 
 // Application type handlers for JS SDK.
 //
@@ -237,4 +240,36 @@ exports.fetchAccessControlAsset = sdk => {
       }
       return response;
     });
+};
+
+// Integration API is rate limited. The limiters are shared by all requests, so the server stays
+// within the limits.
+const integrationQueryLimiter = sharetribeIntegrationSdk.util.createRateLimiter(
+  sharetribeIntegrationSdk.util.prodQueryLimiterConfig
+);
+const integrationCommandLimiter = sharetribeIntegrationSdk.util.createRateLimiter(
+  sharetribeIntegrationSdk.util.prodCommandLimiterConfig
+);
+let integrationSdkInstance = null;
+
+/**
+ * Returns the Integration API SDK instance. Use it on the server when the marketplace needs to
+ * read data the current user can't see (e.g. another user's private data).
+ * The same instance is reused, so that its token and rate limiters are shared by all requests.
+ *
+ * @returns {Object} Integration SDK instance
+ */
+exports.getIntegrationSdk = () => {
+  if (!INTEGRATION_CLIENT_ID || !INTEGRATION_CLIENT_SECRET) {
+    throw new Error('Sharetribe Integration API credentials are not set.');
+  }
+  if (!integrationSdkInstance) {
+    integrationSdkInstance = sharetribeIntegrationSdk.createInstance({
+      clientId: INTEGRATION_CLIENT_ID,
+      clientSecret: INTEGRATION_CLIENT_SECRET,
+      queryLimiter: integrationQueryLimiter,
+      commandLimiter: integrationCommandLimiter,
+    });
+  }
+  return integrationSdkInstance;
 };

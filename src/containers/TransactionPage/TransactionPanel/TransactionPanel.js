@@ -267,6 +267,7 @@ export class TransactionPanelComponent extends Component {
                 <DeliveryInfoMaybe
                   className={css.deliveryInfoSection}
                   protectedData={protectedData}
+                  transactionRole={transactionRole}
                   listing={listing}
                   locale={config.localization.locale}
                 />
