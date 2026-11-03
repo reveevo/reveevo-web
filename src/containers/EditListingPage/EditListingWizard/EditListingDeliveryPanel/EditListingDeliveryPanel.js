@@ -5,6 +5,7 @@ import classNames from 'classnames';
 // Import configs and util modules
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { LISTING_STATE_DRAFT, propTypes } from '../../../../util/types';
+import { types as sdkTypes } from '../../../../util/sdkLoader';
 import { displayDeliveryPickup, displayDeliveryShipping } from '../../../../util/configHelpers';
 import {
   getDeliveryAddress,
@@ -23,9 +24,11 @@ import { DeliveryAddressForm, H3, ListingLink, Modal } from '../../../../compone
 import EditListingDeliveryForm from './EditListingDeliveryForm';
 import css from './EditListingDeliveryPanel.module.css';
 
+const { LatLng } = sdkTypes;
+
 const getInitialValues = props => {
   const { listing, listingTypes } = props;
-  const { geolocation, publicData } = listing?.attributes || {};
+  const { publicData } = listing?.attributes || {};
 
   const listingType = listing?.attributes?.publicData?.listingType;
   const listingTypeConfig = listingTypes.find(conf => conf.listingType === listingType);
@@ -33,11 +36,6 @@ const getInitialValues = props => {
   const displayPickup = displayDeliveryPickup(listingTypeConfig);
   const displayMultipleDelivery = displayShipping && displayPickup;
 
-  // Only render current search if full place object is available in the URL params
-  // TODO bounds are missing - those need to be queried directly from Google Places
-  const locationFieldsPresent = publicData?.location?.address && geolocation;
-  const location = publicData?.location || {};
-  const { address, building } = location;
   const { shippingEnabled, pickupEnabled } = publicData;
   const deliveryOptions = [];
 
@@ -49,16 +47,7 @@ const getInitialValues = props => {
   }
 
   // Initial values for the form
-  return {
-    building,
-    location: locationFieldsPresent
-      ? {
-          search: address,
-          selectedPlace: { address, origin: geolocation },
-        }
-      : { search: undefined, selectedPlace: undefined },
-    deliveryOptions,
-  };
+  return { deliveryOptions };
 };
 
 /**
@@ -153,22 +142,25 @@ const EditListingDeliveryPanel = props => {
           className={css.form}
           initialValues={state.initialValues}
           onSubmit={values => {
-            const { building = '', location, deliveryOptions } = values;
+            const { deliveryOptions } = values;
 
             const shippingEnabled = deliveryOptions.includes('shipping');
             const pickupEnabled = deliveryOptions.includes('pickup');
-            const address = location?.selectedPlace?.address || null;
-            const origin = location?.selectedPlace?.origin || null;
 
+            // Direct pick up uses the seller's address (the same one as shipping).
+            // It's copied to the listing, so that buyers see where to pick up the item.
+            const { address, details, origin } = deliveryAddress || {};
             const pickupDataMaybe =
-              pickupEnabled && address ? { location: { address, building } } : {};
+              pickupEnabled && address ? { location: { address, building: details || '' } } : {};
+            const geolocationMaybe =
+              pickupEnabled && origin ? { geolocation: new LatLng(origin.lat, origin.lng) } : {};
 
             // Note: shipping fee is not set per listing. Reveevo calculates it at checkout
             // from the vehicle needed for the item and the distance (server/services/shipping).
 
             // New values for listing attributes
             const updateValues = {
-              geolocation: origin,
+              ...geolocationMaybe,
               publicData: {
                 pickupEnabled,
                 ...pickupDataMaybe,
@@ -177,15 +169,7 @@ const EditListingDeliveryPanel = props => {
             };
 
             // Save the initialValues to state
-            // LocationAutocompleteInput doesn't have internal state
-            // and therefore re-rendering would overwrite the values during XHR call.
-            setState({
-              initialValues: {
-                building,
-                location: { search: address, selectedPlace: { address, origin } },
-                deliveryOptions,
-              },
-            });
+            setState({ initialValues: { deliveryOptions } });
             onSubmit(updateValues);
           }}
           listingTypeConfig={listingTypeConfig}
@@ -197,7 +181,6 @@ const EditListingDeliveryPanel = props => {
           updated={panelUpdated}
           updateInProgress={updateInProgress}
           fetchErrors={errors}
-          autoFocus
         />
       ) : (
         <div className={css.priceCurrencyInvalid}>

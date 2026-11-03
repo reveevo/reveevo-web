@@ -4,6 +4,7 @@ const { getUserDeliveryAddress } = require('../sharetribe');
 const { isCompleteDeliveryAddress, pickDeliveryAddress } = require('./addresses');
 const { getPeopleNeeded, getShippingFeeInMXN, MAX_DISTANCE_KM } = require('./rates');
 const { getVehicleForListing } = require('./vehicles');
+const { syncPickupLocations } = require('./pickupLocations');
 
 const { Money } = types;
 
@@ -107,4 +108,5 @@ module.exports = {
   SHIPPING_ERROR_CODES,
   needsShippingQuote,
   getShippingQuote,
+  syncPickupLocations,
 };

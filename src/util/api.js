@@ -151,3 +151,10 @@ export const createUserWithIdp = body => {
 export const deleteUserAccount = body => {
   return post('/api/delete-account', body);
 };
+
+// Update the pickup location of the current user's listings to match their saved address.
+//
+// See `server/api/sync-pickup-locations.js` to see what data should be sent in the body.
+export const syncPickupLocations = () => {
+  return post('/api/sync-pickup-locations', {});
+};

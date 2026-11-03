@@ -36,20 +36,19 @@ const renderForm = props =>
   );
 
 describe('EditListingDeliveryForm', () => {
-  it('Shipping needs the seller address before the form can be saved', async () => {
+  it('Delivery options need the seller address before the form can be saved', async () => {
     const user = userEvent.setup();
     renderForm();
 
-    // Pickup fields
-    expect(screen.getByText('EditListingDeliveryForm.address')).toBeInTheDocument();
-    expect(screen.getByText('EditListingDeliveryForm.building')).toBeInTheDocument();
+    // One address section for both pick up and shipping
+    expect(screen.getByText('EditListingDeliveryForm.yourAddressHeading')).toBeInTheDocument();
+    expect(screen.getByText('EditListingDeliveryForm.addressMissing')).toBeInTheDocument();
 
     // Test that save button is disabled at first
     expect(screen.getByRole('button', { name: 'Save location' })).toBeDisabled();
 
-    // Shipping without an address: seller is asked to add the address
-    await user.click(screen.getByLabelText(/EditListingDeliveryForm.shippingLabel/i));
-    expect(screen.getByText('EditListingDeliveryForm.shippingAddressMissing')).toBeInTheDocument();
+    // Pick up without an address: the seller still needs to add the address
+    await user.click(screen.getByLabelText(/EditListingDeliveryForm.pickupLabel/i));
     expect(screen.getByRole('button', { name: 'Save location' })).toBeDisabled();
   });
 

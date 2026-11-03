@@ -838,8 +838,9 @@ describe('EditListingPage', () => {
       expect(
         getByRole('checkbox', { name: /EditListingDeliveryForm.pickupLabel/i })
       ).not.toBeChecked();
-      expect(queryByPlaceholderText('EditListingDeliveryForm.addressPlaceholder')).toBeDisabled();
-      expect(getByRole('textbox', { name: 'EditListingDeliveryForm.building' })).toBeDisabled();
+      // One address (the seller's saved address) is used for pick up and shipping
+      expect(getByText('EditListingDeliveryForm.yourAddressHeading')).toBeInTheDocument();
+      expect(queryByPlaceholderText('EditListingDeliveryForm.addressPlaceholder')).toBeNull();
 
       // Tab/form: shipping
       expect(
@@ -1048,10 +1049,8 @@ describe('EditListingPage', () => {
 
       // Tab/form: pickup
       expect(getByRole('checkbox', { name: /EditListingDeliveryForm.pickupLabel/i })).toBeChecked();
-      expect(
-        queryByPlaceholderText('EditListingDeliveryForm.addressPlaceholder')
-      ).not.toBeDisabled();
-      expect(getByRole('textbox', { name: 'EditListingDeliveryForm.building' })).not.toBeDisabled();
+      expect(getByText('EditListingDeliveryForm.addressMissing')).toBeInTheDocument();
+      expect(getByRole('button', { name: 'EditListingDeliveryForm.addAddress' })).toBeEnabled();
 
       // Tab/form: no shipping
       expect(

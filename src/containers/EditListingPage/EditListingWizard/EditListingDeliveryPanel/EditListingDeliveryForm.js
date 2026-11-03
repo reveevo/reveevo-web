@@ -6,27 +6,13 @@ import classNames from 'classnames';
 import { FormattedMessage, useIntl } from '../../../../util/reactIntl';
 import { propTypes } from '../../../../util/types';
 import { displayDeliveryPickup, displayDeliveryShipping } from '../../../../util/configHelpers';
-import {
-  autocompleteSearchRequired,
-  autocompletePlaceSelected,
-  composeValidators,
-} from '../../../../util/validators';
 import { isCompleteDeliveryAddress } from '../../../../util/deliveryAddress';
 
 // Import shared components
-import {
-  Form,
-  FieldLocationAutocompleteInput,
-  Button,
-  FieldTextInput,
-  FieldCheckbox,
-  InlineTextButton,
-} from '../../../../components';
+import { Form, Button, FieldCheckbox, H5, InlineTextButton } from '../../../../components';
 
 // Import modules from this directory
 import css from './EditListingDeliveryForm.module.css';
-
-const identity = v => v;
 
 /**
  * The EditListingDeliveryForm component.
@@ -37,7 +23,6 @@ const identity = v => v;
  * @param {string} [props.className] - Custom class that extends the default class for the root element
  * @param {Function} props.onSubmit - The submit function
  * @param {string} props.saveActionMsg - The save action message
- * @param {Object} props.selectedPlace - The selected place
  * @param {string} props.marketplaceCurrency - The marketplace currency
  * @param {boolean} props.hasStockInUse - Whether the stock is in use
  * @param {boolean} props.disabled - Whether the form is disabled
@@ -47,7 +32,6 @@ const identity = v => v;
  * @param {Object} props.fetchErrors - The fetch errors
  * @param {propTypes.error} [props.fetchErrors.showListingsError] - The show listings error
  * @param {propTypes.error} [props.fetchErrors.updateListingError] - The update listing error
- * @param {boolean} props.autoFocus - Whether the form is auto focused
  * @param {Object} [props.deliveryAddress] - Seller's saved delivery address (shipping starts from it)
  * @param {Function} props.onOpenDeliveryAddressModal - Opens the modal for adding/editing the address
  * @returns {JSX.Element} The EditListingDeliveryForm component
@@ -59,7 +43,6 @@ export const EditListingDeliveryForm = props => (
       const {
         formId = 'EditListingDeliveryForm',
         form,
-        autoFocus,
         className,
         disabled,
         ready,
@@ -97,40 +80,21 @@ export const EditListingDeliveryForm = props => (
       const shippingEnabled = displayShipping && values.deliveryOptions?.includes('shipping');
       const pickupEnabled = displayPickup && values.deliveryOptions?.includes('pickup');
 
-      const addressRequiredMessage = intl.formatMessage({
-        id: 'EditListingDeliveryForm.addressRequired',
-      });
-      const addressNotRecognizedMessage = intl.formatMessage({
-        id: 'EditListingDeliveryForm.addressNotRecognized',
-      });
-
-      const optionalText = intl.formatMessage({
-        id: 'EditListingDeliveryForm.optionalText',
-      });
-
       const { updateListingError, showListingsError } = fetchErrors || {};
 
       const classes = classNames(css.root, className);
       const submitReady = (updated && pristine) || ready;
       const submitInProgress = updateInProgress;
-      // Shipping is arranged by Reveevo: the fee is calculated from the seller's address,
-      // so the address is required for shipping.
+      // The seller's address (one address, saved to their profile) is used for both options:
+      // direct pick up by the buyer and shipping organized by Reveevo.
       const hasDeliveryAddress = isCompleteDeliveryAddress(deliveryAddress);
+      const hasDeliveryOption = shippingEnabled || pickupEnabled;
       const submitDisabled =
-        invalid ||
-        disabled ||
-        submitInProgress ||
-        (!shippingEnabled && !pickupEnabled) ||
-        (shippingEnabled && !hasDeliveryAddress);
+        invalid || disabled || submitInProgress || !hasDeliveryOption || !hasDeliveryAddress;
 
       const shippingLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.shippingLabel' });
       const pickupLabel = intl.formatMessage({ id: 'EditListingDeliveryForm.pickupLabel' });
 
-      const pickupClasses = classNames({
-        [css.deliveryOption]: displayMultipleDelivery,
-        [css.disabled]: !pickupEnabled,
-        [css.hidden]: !displayPickup,
-      });
       const shippingClasses = classNames({
         [css.deliveryOption]: displayMultipleDelivery,
         [css.disabled]: !shippingEnabled,
@@ -143,6 +107,18 @@ export const EditListingDeliveryForm = props => (
 
       return (
         <Form className={classes} onSubmit={handleSubmit}>
+          {updateListingError ? (
+            <p className={css.error}>
+              <FormattedMessage id="EditListingDeliveryForm.updateFailed" />
+            </p>
+          ) : null}
+
+          {showListingsError ? (
+            <p className={css.error}>
+              <FormattedMessage id="EditListingDeliveryForm.showListingFailed" />
+            </p>
+          ) : null}
+
           <FieldCheckbox
             id={formId ? `${formId}.pickup` : 'pickup'}
             className={classNames(css.deliveryCheckbox, { [css.hidden]: !displayMultipleDelivery })}
@@ -150,69 +126,6 @@ export const EditListingDeliveryForm = props => (
             label={pickupLabel}
             value="pickup"
           />
-          <div className={pickupClasses}>
-            {updateListingError ? (
-              <p className={css.error}>
-                <FormattedMessage id="EditListingDeliveryForm.updateFailed" />
-              </p>
-            ) : null}
-
-            {showListingsError ? (
-              <p className={css.error}>
-                <FormattedMessage id="EditListingDeliveryForm.showListingFailed" />
-              </p>
-            ) : null}
-
-            <FieldLocationAutocompleteInput
-              disabled={!pickupEnabled}
-              rootClassName={css.input}
-              inputClassName={css.locationAutocompleteInput}
-              iconClassName={css.locationAutocompleteInputIcon}
-              predictionsClassName={css.predictionsRoot}
-              validClassName={css.validLocation}
-              autoFocus={autoFocus}
-              name="location"
-              id={`${formId}.location`}
-              label={intl.formatMessage({ id: 'EditListingDeliveryForm.address' })}
-              placeholder={intl.formatMessage({
-                id: 'EditListingDeliveryForm.addressPlaceholder',
-              })}
-              useDefaultPredictions={false}
-              format={identity}
-              valueFromForm={values.location}
-              validate={
-                pickupEnabled
-                  ? composeValidators(
-                      autocompleteSearchRequired(addressRequiredMessage),
-                      autocompletePlaceSelected(addressNotRecognizedMessage)
-                    )
-                  : () => {}
-              }
-              hideErrorMessage={!pickupEnabled}
-              // Whatever parameters are being used to calculate
-              // the validation function need to be combined in such
-              // a way that, when they change, this key prop
-              // changes, thus reregistering this field (and its
-              // validation function) with Final Form.
-              // See example: https://codesandbox.io/s/changing-field-level-validators-zc8ei
-              key={pickupEnabled ? 'locationValidation' : 'noLocationValidation'}
-            />
-
-            <FieldTextInput
-              className={css.input}
-              type="text"
-              name="building"
-              id={formId ? `${formId}.building` : 'building'}
-              label={intl.formatMessage(
-                { id: 'EditListingDeliveryForm.building' },
-                { optionalText }
-              )}
-              placeholder={intl.formatMessage({
-                id: 'EditListingDeliveryForm.buildingPlaceholder',
-              })}
-              disabled={!pickupEnabled}
-            />
-          </div>
 
           <FieldCheckbox
             id={formId ? `${formId}.shipping` : 'shipping'}
@@ -221,11 +134,16 @@ export const EditListingDeliveryForm = props => (
             label={shippingLabel}
             value="shipping"
           />
-
           <div className={shippingClasses}>
             <p className={css.shippingInfo}>
               <FormattedMessage id="EditListingDeliveryForm.shippingInfo" />
             </p>
+          </div>
+
+          <div className={css.addressSection}>
+            <H5 as="h2" className={css.addressHeading}>
+              <FormattedMessage id="EditListingDeliveryForm.yourAddressHeading" />
+            </H5>
             {hasDeliveryAddress ? (
               <p className={css.shippingAddress}>
                 <FormattedMessage
@@ -241,11 +159,11 @@ export const EditListingDeliveryForm = props => (
               </p>
             ) : (
               <p className={css.shippingAddressMissing}>
-                <FormattedMessage id="EditListingDeliveryForm.shippingAddressMissing" />{' '}
+                <FormattedMessage id="EditListingDeliveryForm.addressMissing" />{' '}
                 <InlineTextButton
                   type="button"
                   onClick={openDeliveryAddressModal}
-                  disabled={!shippingEnabled}
+                  disabled={!hasDeliveryOption}
                 >
                   <FormattedMessage id="EditListingDeliveryForm.addAddress" />
                 </InlineTextButton>
