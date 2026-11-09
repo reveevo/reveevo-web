@@ -1,0 +1,9 @@
+.heading {
+  composes: h2 from global;
+  margin: 0;
+}
+
+.description {
+  margin: 12px 0 24px 0;
+  color: var(--colorGrey700);
+}

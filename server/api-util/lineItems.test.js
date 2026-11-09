@@ -58,7 +58,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3); // order + provider commission + customer commission
+      expect(result).toHaveLength(4); // order + provider commission + customer commission + IVA
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -102,7 +102,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item with seats
       expect(result[0]).toEqual({
@@ -140,7 +140,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -176,7 +176,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item with seats
       expect(result[0]).toEqual({
@@ -214,7 +214,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -250,7 +250,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item with seats
       expect(result[0]).toEqual({
@@ -288,7 +288,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -324,7 +324,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item with seats
       expect(result[0]).toEqual({
@@ -365,7 +365,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3); // order + provider commission + customer commission (no shipping for pickup)
+      expect(result).toHaveLength(4); // order + provider commission + customer commission (no shipping for pickup) + IVA
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -404,7 +404,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(4); // order + shipping + provider commission + customer commission
+      expect(result).toHaveLength(5); // order + shipping + provider commission + customer commission + IVA
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -449,7 +449,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3); // order + provider commission + customer commission
+      expect(result).toHaveLength(4); // order + provider commission + customer commission + IVA
       expect(result.find(item => item.code === 'line-item/shipping-fee')).toBeUndefined();
     });
   });
@@ -520,7 +520,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3); // order + provider commission + customer commission
+      expect(result).toHaveLength(4); // order + provider commission + customer commission + IVA
 
       // Check main order line item
       expect(result[0]).toEqual({
@@ -554,7 +554,7 @@ describe('transactionLineItems', () => {
         mockCustomerCommission
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
 
       // Check main order line item uses listing price when no offer
       expect(result[0]).toEqual({
@@ -651,7 +651,7 @@ describe('transactionLineItems', () => {
 
       const result = transactionLineItems(listing, orderData, providerCommission, null);
 
-      expect(result).toHaveLength(2); // order + provider commission
+      expect(result).toHaveLength(3); // order + provider commission + IVA
       expect(result[1].code).toBe('line-item/provider-commission');
       expect(result[1].unitPrice).toEqual(new Money(3000, 'EUR')); // Uses minimum amount
       expect(result[1].quantity).toBe(-1); // Negative for provider commission
@@ -681,7 +681,7 @@ describe('transactionLineItems', () => {
 
       const result = transactionLineItems(listing, orderData, providerCommission, null);
 
-      expect(result).toHaveLength(2); // order + provider commission
+      expect(result).toHaveLength(3); // order + provider commission + IVA
       expect(result[1].code).toBe('line-item/provider-commission');
       expect(result[1].percentage).toBe(-15); // Negative percentage for provider commission
     });

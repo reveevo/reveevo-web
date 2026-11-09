@@ -23,6 +23,7 @@ import {
   OrderPanel,
   LayoutSingleColumn,
   SectionText,
+  MakeOfferModal,
 } from '../../components';
 
 // Related components and modules
@@ -32,7 +33,6 @@ import NotFoundPage from '../NotFoundPage/NotFoundPage';
 
 import {
   sendInquiry,
-  makeOffer,
   setInitialValues,
   fetchTimeSlots,
   fetchTransactionLineItems,
@@ -58,8 +58,6 @@ import SectionMapMaybe from './SectionMapMaybe';
 import CustomListingFields from './CustomListingFields';
 import Notifications from './Notifications/Notifications';
 import ListingPageAccessWrapper from './ListingPageAccessWrapper';
-
-import MakeOfferModal from './MakeOfferModal/MakeOfferModal';
 
 import css from './ListingPage.module.css';
 
@@ -94,9 +92,6 @@ export const ListingPageComponent = props => {
     fetchReviewsError,
     sendInquiryInProgress,
     sendInquiryError,
-    makeOfferInProgress,
-    makeOfferError,
-    onMakeOffer,
     history,
     callSetInitialValues,
     onSendInquiry,
@@ -206,10 +201,10 @@ export const ListingPageComponent = props => {
       : null;
   const onSubmitOffer = handleSubmitOffer({
     ...commonParams,
+    currentUser,
+    callSetInitialValues,
     getListing,
-    onMakeOffer,
-    makeOfferOrderDetails,
-    setMakeOfferOrderDetails,
+    onInitializeCardPaymentData,
   });
 
   const handleOrderSubmit = values => {
@@ -402,9 +397,10 @@ export const ListingPageComponent = props => {
             price={price}
             quantity={makeOfferOrderDetails?.quantity}
             maxQuantity={makeOfferOrderDetails?.maxQuantity}
+            deliveryMethod={makeOfferOrderDetails?.deliveryMethod}
+            pickupEnabled={makeOfferOrderDetails?.pickupEnabled}
+            shippingEnabled={makeOfferOrderDetails?.shippingEnabled}
             onSubmit={onSubmitOffer}
-            inProgress={makeOfferInProgress}
-            makeOfferError={makeOfferError}
           />
         ) : null}
       </LayoutSingleColumn>
@@ -459,8 +455,6 @@ const ListingPage = props => {
     timeSlotsForDate,
     sendInquiryInProgress,
     sendInquiryError,
-    makeOfferInProgress,
-    makeOfferError,
     lineItems,
     fetchLineItemsInProgress,
     fetchLineItemsError,
@@ -505,7 +499,6 @@ const ListingPage = props => {
   const onSendInquiry = useCallback((listing, message) => dispatch(sendInquiry(listing, message)), [
     dispatch,
   ]);
-  const onMakeOffer = useCallback(params => dispatch(makeOffer(params)), [dispatch]);
   const onInitializeCardPaymentData = useCallback(() => dispatch(initializeCardPaymentData()), [
     dispatch,
   ]);
@@ -535,9 +528,6 @@ const ListingPage = props => {
       fetchLineItemsError={fetchLineItemsError}
       sendInquiryInProgress={sendInquiryInProgress}
       sendInquiryError={sendInquiryError}
-      makeOfferInProgress={makeOfferInProgress}
-      makeOfferError={makeOfferError}
-      onMakeOffer={onMakeOffer}
       onManageDisableScrolling={onManageDisableScrolling}
       callSetInitialValues={callSetInitialValues}
       onFetchTransactionLineItems={onFetchTransactionLineItems}

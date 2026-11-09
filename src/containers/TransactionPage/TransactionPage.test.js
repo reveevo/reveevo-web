@@ -346,12 +346,9 @@ describe('TransactionPage', () => {
         screen.queryAllByText(`TransactionPanel.${processName}.orderBreakdownTitle`)
       ).toHaveLength(expectedLength);
       expect(screen.queryAllByText('OrderBreakdown.baseUnitQuantity')).toHaveLength(expectedLength);
-      expect(screen.queryAllByText('OrderBreakdown.subTotal')).toHaveLength(
-        isReversal ? expectedLength : 0
-      );
-      expect(screen.queryAllByText('$10.00')).toHaveLength(
-        isReversal ? expectedLength * 3 : expectedLength * 2
-      ); // base, subtotal, total
+      // Reveevo: customers don't see a subtotal (item price + fees + IVA = total)
+      expect(screen.queryAllByText('OrderBreakdown.subTotal')).toHaveLength(0);
+      expect(screen.queryAllByText('$10.00')).toHaveLength(expectedLength * 2); // base, total
 
       // Order breakdown: refund?
       const expectedLengthReversal = isReversal ? 2 : 0;
@@ -684,12 +681,9 @@ describe('TransactionPage', () => {
       //expect(screen.queryAllByText('Jun 14')).toHaveLength(expectedLength);
 
       expect(screen.queryAllByText('OrderBreakdown.baseUnitDay')).toHaveLength(expectedLength);
-      expect(screen.queryAllByText('OrderBreakdown.subTotal')).toHaveLength(
-        isReversal ? expectedLength : 0
-      );
-      expect(screen.queryAllByText('$10.00')).toHaveLength(
-        isReversal ? expectedLength * 3 : expectedLength * 2
-      ); // base, subtotal, total
+      // Reveevo: customers don't see a subtotal
+      expect(screen.queryAllByText('OrderBreakdown.subTotal')).toHaveLength(0);
+      expect(screen.queryAllByText('$10.00')).toHaveLength(expectedLength * 2); // base, total
 
       // Order breakdown: refund?
       const expectedLengthReversal = isReversal ? 2 : 0;

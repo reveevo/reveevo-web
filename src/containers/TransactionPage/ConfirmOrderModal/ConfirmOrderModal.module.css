@@ -1,0 +1,24 @@
+@import '../../../styles/customMediaQueries.css';
+
+.heading {
+  composes: h2 from global;
+  margin: 0;
+}
+
+.description {
+  margin: 12px 0 24px 0;
+  color: var(--colorGrey700);
+}
+
+.field {
+  margin-bottom: 24px;
+}
+
+.error {
+  color: var(--colorFail);
+  margin: 0 0 16px 0;
+}
+
+.submitButton {
+  margin-top: 16px;
+}

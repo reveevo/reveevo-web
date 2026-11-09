@@ -1,6 +1,14 @@
 /**
  * Transaction process graph for product orders:
- *   - default-purchase
+ *   - default-purchase (Reveevo release 3)
+ *
+ * Direct order: the customer pays (the card is held), the provider confirms the sale and picks the
+ * pick-up / collection day (the payment is captured), or declines (the hold is released).
+ * Offer: the customer's card is held for the offered price. The provider accepts (= confirms the
+ * sale), declines, or makes a counter offer (the hold is released). The customer pays a counter
+ * offer at once in a new transaction, or makes a new offer (also a new transaction).
+ * Hand-over: the customer's PIN is entered by the provider (pick up) or Reveevo's courier
+ * (shipping), and the server completes the order with an operator transition.
  */
 
 /**
@@ -24,55 +32,67 @@ export const transitions = {
   INQUIRE: 'transition/inquire',
   REQUEST_PAYMENT_AFTER_INQUIRY: 'transition/request-payment-after-inquiry',
 
-  // A customer can make an offer (a price per item) instead of buying with the listed price.
-  // Provider can accept, decline, or make a counter offer. Customer can then accept, decline,
-  // or make a new counter offer. Pending offers expire automatically.
-  CUSTOMER_MAKE_OFFER: 'transition/customer-make-offer',
-  PROVIDER_ACCEPT_OFFER: 'transition/provider-accept-offer',
-  PROVIDER_DECLINE_OFFER: 'transition/provider-decline-offer',
-  PROVIDER_MAKE_COUNTER_OFFER: 'transition/provider-make-counter-offer',
-  CUSTOMER_WITHDRAW_OFFER: 'transition/customer-withdraw-offer',
-  EXPIRE_OFFER: 'transition/expire-offer',
-  CUSTOMER_ACCEPT_COUNTER_OFFER: 'transition/customer-accept-counter-offer',
-  CUSTOMER_DECLINE_COUNTER_OFFER: 'transition/customer-decline-counter-offer',
-  CUSTOMER_MAKE_COUNTER_OFFER: 'transition/customer-make-counter-offer',
-  EXPIRE_COUNTER_OFFER: 'transition/expire-counter-offer',
-
-  // When an offer is accepted, the customer pays the agreed price.
-  // If that does not happen in time, the accepted offer expires.
-  REQUEST_PAYMENT_AFTER_OFFER: 'transition/request-payment-after-offer',
-  EXPIRE_ACCEPTED_OFFER: 'transition/expire-accepted-offer',
+  // The customer pays the provider's counter offer (in a new transaction)
+  REQUEST_PAYMENT_FOR_COUNTER_OFFER: 'transition/request-payment-for-counter-offer',
 
   // Stripe SDK might need to ask 3D security from customer, in a separate front-end step.
   // Therefore we need to make another transition to Marketplace API,
-  // to tell that the payment is confirmed.
+  // to tell that the payment is confirmed. The card is held until the provider confirms.
   CONFIRM_PAYMENT: 'transition/confirm-payment',
 
   // If the payment is not confirmed in the time limit set in transaction process (by default 15min)
   // the transaction will expire automatically.
   EXPIRE_PAYMENT: 'transition/expire-payment',
 
-  // Provider or opeartor can mark the product shipped/delivered
-  MARK_DELIVERED: 'transition/mark-delivered',
-  OPERATOR_MARK_DELIVERED: 'transition/operator-mark-delivered',
+  // The provider confirms the sale (and the pick-up / collection day), or declines it.
+  // If the provider doesn't react in 3 days, the order expires. The hold is released.
+  PROVIDER_CONFIRM_ORDER: 'transition/provider-confirm-order',
+  PROVIDER_DECLINE_ORDER: 'transition/provider-decline-order',
+  EXPIRE_CONFIRMATION: 'transition/expire-confirmation',
 
-  // Customer can mark the product received (e.g. picked up from provider)
+  // Offers: the customer's card is held for the offered price.
+  CUSTOMER_MAKE_OFFER: 'transition/customer-make-offer',
+  CONFIRM_OFFER_PAYMENT: 'transition/confirm-offer-payment',
+  EXPIRE_OFFER_PAYMENT: 'transition/expire-offer-payment',
+  PROVIDER_ACCEPT_OFFER: 'transition/provider-accept-offer',
+  PROVIDER_DECLINE_OFFER: 'transition/provider-decline-offer',
+  CUSTOMER_WITHDRAW_OFFER: 'transition/customer-withdraw-offer',
+  EXPIRE_OFFER: 'transition/expire-offer',
+
+  // The provider's counter offer releases the hold. The customer continues in a new transaction
+  // (pays the counter offer or makes a new offer), and this one is closed.
+  PROVIDER_MAKE_COUNTER_OFFER: 'transition/provider-make-counter-offer',
+  CUSTOMER_ACCEPT_COUNTER_OFFER: 'transition/customer-accept-counter-offer',
+  CUSTOMER_MAKE_COUNTER_OFFER: 'transition/customer-make-counter-offer',
+  CUSTOMER_DECLINE_COUNTER_OFFER: 'transition/customer-decline-counter-offer',
+  EXPIRE_COUNTER_OFFER: 'transition/expire-counter-offer',
+
+  // Hand-over: confirmed on the server with the customer's PIN (operator transitions).
+  // For shipped orders, the operator can mark the item collected from the provider first.
+  OPERATOR_MARK_COLLECTED: 'transition/operator-mark-collected',
+  OPERATOR_CONFIRM_HANDOVER: 'transition/operator-confirm-handover',
+  OPERATOR_CONFIRM_DELIVERY: 'transition/operator-confirm-delivery',
+
+  // Customer can mark the product received
   MARK_RECEIVED_FROM_PURCHASED: 'transition/mark-received-from-purchased',
 
-  // Automatic cancellation happens if none marks the delivery happened
+  // Automatic cancellation happens if the hand-over doesn't happen in 14 days
   AUTO_CANCEL: 'transition/auto-cancel',
 
-  // Operator can cancel the purchase before product has been marked as delivered / received
+  // Operator can cancel the purchase before the hand-over
   CANCEL: 'transition/cancel',
+  OPERATOR_CANCEL_FROM_COLLECTED: 'transition/operator-cancel-from-collected',
 
-  // If provider has marked the product delivered (e.g. shipped),
-  // customer can then mark the product received
+  // Operator can mark the order delivered (e.g. to handle a dispute)
+  OPERATOR_MARK_DELIVERED: 'transition/operator-mark-delivered',
+
+  // If the order is marked delivered, customer can then mark the product received
   MARK_RECEIVED: 'transition/mark-received',
 
   // If customer doesn't mark the product received manually, it can happen automatically
   AUTO_MARK_RECEIVED: 'transition/auto-mark-received',
 
-  // When provider has marked the product delivered, customer or operator can dispute the transaction
+  // When the order is marked delivered, customer or operator can dispute the transaction
   DISPUTE: 'transition/dispute',
   OPERATOR_DISPUTE: 'transition/operator-dispute',
 
@@ -114,15 +134,21 @@ export const transitions = {
 export const states = {
   INITIAL: 'initial',
   INQUIRY: 'inquiry',
+  PENDING_PAYMENT: 'pending-payment',
+  PAYMENT_EXPIRED: 'payment-expired',
+  PENDING_CONFIRMATION: 'pending-confirmation',
+  DECLINED: 'declined',
+  OFFER_PAYMENT_PENDING: 'offer-payment-pending',
+  OFFER_PAYMENT_EXPIRED: 'offer-payment-expired',
   OFFER_PENDING: 'offer-pending',
-  COUNTER_OFFER_PENDING: 'counter-offer-pending',
-  OFFER_ACCEPTED: 'offer-accepted',
   OFFER_DECLINED: 'offer-declined',
   OFFER_WITHDRAWN: 'offer-withdrawn',
   OFFER_EXPIRED: 'offer-expired',
-  PENDING_PAYMENT: 'pending-payment',
-  PAYMENT_EXPIRED: 'payment-expired',
+  COUNTER_OFFERED: 'counter-offered',
+  COUNTER_OFFER_ACCEPTED: 'counter-offer-accepted',
+  CUSTOMER_COUNTERED: 'customer-countered',
   PURCHASED: 'purchased',
+  COLLECTED: 'collected',
   DELIVERED: 'delivered',
   RECEIVED: 'received',
   DISPUTED: 'disputed',
@@ -157,7 +183,8 @@ export const graph = {
       on: {
         [transitions.INQUIRE]: states.INQUIRY,
         [transitions.REQUEST_PAYMENT]: states.PENDING_PAYMENT,
-        [transitions.CUSTOMER_MAKE_OFFER]: states.OFFER_PENDING,
+        [transitions.REQUEST_PAYMENT_FOR_COUNTER_OFFER]: states.PENDING_PAYMENT,
+        [transitions.CUSTOMER_MAKE_OFFER]: states.OFFER_PAYMENT_PENDING,
       },
     },
     [states.INQUIRY]: {
@@ -166,48 +193,67 @@ export const graph = {
       },
     },
 
+    [states.PENDING_PAYMENT]: {
+      on: {
+        [transitions.EXPIRE_PAYMENT]: states.PAYMENT_EXPIRED,
+        [transitions.CONFIRM_PAYMENT]: states.PENDING_CONFIRMATION,
+      },
+    },
+    [states.PAYMENT_EXPIRED]: {},
+
+    [states.PENDING_CONFIRMATION]: {
+      on: {
+        [transitions.PROVIDER_CONFIRM_ORDER]: states.PURCHASED,
+        [transitions.PROVIDER_DECLINE_ORDER]: states.DECLINED,
+        [transitions.EXPIRE_CONFIRMATION]: states.DECLINED,
+      },
+    },
+    [states.DECLINED]: {},
+
+    [states.OFFER_PAYMENT_PENDING]: {
+      on: {
+        [transitions.CONFIRM_OFFER_PAYMENT]: states.OFFER_PENDING,
+        [transitions.EXPIRE_OFFER_PAYMENT]: states.OFFER_PAYMENT_EXPIRED,
+      },
+    },
+    [states.OFFER_PAYMENT_EXPIRED]: {},
     [states.OFFER_PENDING]: {
       on: {
-        [transitions.PROVIDER_ACCEPT_OFFER]: states.OFFER_ACCEPTED,
+        [transitions.PROVIDER_ACCEPT_OFFER]: states.PURCHASED,
         [transitions.PROVIDER_DECLINE_OFFER]: states.OFFER_DECLINED,
-        [transitions.PROVIDER_MAKE_COUNTER_OFFER]: states.COUNTER_OFFER_PENDING,
         [transitions.CUSTOMER_WITHDRAW_OFFER]: states.OFFER_WITHDRAWN,
         [transitions.EXPIRE_OFFER]: states.OFFER_EXPIRED,
+        [transitions.PROVIDER_MAKE_COUNTER_OFFER]: states.COUNTER_OFFERED,
       },
     },
-    [states.COUNTER_OFFER_PENDING]: {
+    [states.COUNTER_OFFERED]: {
       on: {
-        [transitions.CUSTOMER_ACCEPT_COUNTER_OFFER]: states.OFFER_ACCEPTED,
+        [transitions.CUSTOMER_ACCEPT_COUNTER_OFFER]: states.COUNTER_OFFER_ACCEPTED,
+        [transitions.CUSTOMER_MAKE_COUNTER_OFFER]: states.CUSTOMER_COUNTERED,
         [transitions.CUSTOMER_DECLINE_COUNTER_OFFER]: states.OFFER_DECLINED,
-        [transitions.CUSTOMER_MAKE_COUNTER_OFFER]: states.OFFER_PENDING,
         [transitions.EXPIRE_COUNTER_OFFER]: states.OFFER_EXPIRED,
-      },
-    },
-    [states.OFFER_ACCEPTED]: {
-      on: {
-        [transitions.REQUEST_PAYMENT_AFTER_OFFER]: states.PENDING_PAYMENT,
-        [transitions.EXPIRE_ACCEPTED_OFFER]: states.OFFER_EXPIRED,
       },
     },
     [states.OFFER_DECLINED]: {},
     [states.OFFER_WITHDRAWN]: {},
     [states.OFFER_EXPIRED]: {},
+    [states.COUNTER_OFFER_ACCEPTED]: {},
+    [states.CUSTOMER_COUNTERED]: {},
 
-    [states.PENDING_PAYMENT]: {
-      on: {
-        [transitions.EXPIRE_PAYMENT]: states.PAYMENT_EXPIRED,
-        [transitions.CONFIRM_PAYMENT]: states.PURCHASED,
-      },
-    },
-
-    [states.PAYMENT_EXPIRED]: {},
     [states.PURCHASED]: {
       on: {
-        [transitions.MARK_DELIVERED]: states.DELIVERED,
-        [transitions.OPERATOR_MARK_DELIVERED]: states.DELIVERED,
+        [transitions.OPERATOR_MARK_COLLECTED]: states.COLLECTED,
+        [transitions.OPERATOR_CONFIRM_HANDOVER]: states.RECEIVED,
         [transitions.MARK_RECEIVED_FROM_PURCHASED]: states.RECEIVED,
+        [transitions.OPERATOR_MARK_DELIVERED]: states.DELIVERED,
         [transitions.AUTO_CANCEL]: states.CANCELED,
         [transitions.CANCEL]: states.CANCELED,
+      },
+    },
+    [states.COLLECTED]: {
+      on: {
+        [transitions.OPERATOR_CONFIRM_DELIVERY]: states.RECEIVED,
+        [transitions.OPERATOR_CANCEL_FROM_COLLECTED]: states.CANCELED,
       },
     },
 
@@ -265,21 +311,27 @@ export const graph = {
 // The first transition and most of the expiration transitions made by system are not relevant
 export const isRelevantPastTransition = transition => {
   return [
-    transitions.CUSTOMER_MAKE_OFFER,
+    transitions.CONFIRM_PAYMENT,
+    transitions.PROVIDER_CONFIRM_ORDER,
+    transitions.PROVIDER_DECLINE_ORDER,
+    transitions.EXPIRE_CONFIRMATION,
+    transitions.CONFIRM_OFFER_PAYMENT,
     transitions.PROVIDER_ACCEPT_OFFER,
     transitions.PROVIDER_DECLINE_OFFER,
-    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CUSTOMER_WITHDRAW_OFFER,
     transitions.EXPIRE_OFFER,
+    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CUSTOMER_ACCEPT_COUNTER_OFFER,
-    transitions.CUSTOMER_DECLINE_COUNTER_OFFER,
     transitions.CUSTOMER_MAKE_COUNTER_OFFER,
+    transitions.CUSTOMER_DECLINE_COUNTER_OFFER,
     transitions.EXPIRE_COUNTER_OFFER,
-    transitions.EXPIRE_ACCEPTED_OFFER,
-    transitions.CONFIRM_PAYMENT,
+    transitions.OPERATOR_MARK_COLLECTED,
+    transitions.OPERATOR_CONFIRM_HANDOVER,
+    transitions.OPERATOR_CONFIRM_DELIVERY,
+    transitions.MARK_RECEIVED_FROM_PURCHASED,
     transitions.AUTO_CANCEL,
     transitions.CANCEL,
-    transitions.MARK_DELIVERED,
+    transitions.OPERATOR_CANCEL_FROM_COLLECTED,
     transitions.OPERATOR_MARK_DELIVERED,
     transitions.DISPUTE,
     transitions.OPERATOR_DISPUTE,
@@ -310,10 +362,9 @@ export const isPrivileged = transition => {
   return [
     transitions.REQUEST_PAYMENT,
     transitions.REQUEST_PAYMENT_AFTER_INQUIRY,
-    transitions.REQUEST_PAYMENT_AFTER_OFFER,
+    transitions.REQUEST_PAYMENT_FOR_COUNTER_OFFER,
     transitions.CUSTOMER_MAKE_OFFER,
     transitions.PROVIDER_MAKE_COUNTER_OFFER,
-    transitions.CUSTOMER_MAKE_COUNTER_OFFER,
   ].includes(transition);
 };
 
@@ -337,17 +388,29 @@ export const isCompleted = transition => {
 export const isRefunded = transition => {
   const txRefundedTransitions = [
     transitions.EXPIRE_PAYMENT,
+    transitions.PROVIDER_DECLINE_ORDER,
+    transitions.EXPIRE_CONFIRMATION,
+    transitions.EXPIRE_OFFER_PAYMENT,
+    transitions.PROVIDER_DECLINE_OFFER,
+    transitions.CUSTOMER_WITHDRAW_OFFER,
+    transitions.EXPIRE_OFFER,
+    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CANCEL,
     transitions.AUTO_CANCEL,
+    transitions.OPERATOR_CANCEL_FROM_COLLECTED,
     transitions.AUTO_CANCEL_FROM_DISPUTED,
     transitions.CANCEL_FROM_DISPUTED,
   ];
   return txRefundedTransitions.includes(transition);
 };
 
-export const statesNeedingProviderAttention = [states.OFFER_PENDING, states.PURCHASED];
+export const statesNeedingProviderAttention = [
+  states.PENDING_CONFIRMATION,
+  states.OFFER_PENDING,
+  states.PURCHASED,
+];
 
-export const statesNeedingCustomerAttention = [states.COUNTER_OFFER_PENDING, states.OFFER_ACCEPTED];
+export const statesNeedingCustomerAttention = [states.COUNTER_OFFERED];
 
 /////////////////////////////////////////////////////////////////////
 // Offers                                                          //
@@ -356,11 +419,7 @@ export const statesNeedingCustomerAttention = [states.COUNTER_OFFER_PENDING, sta
 /////////////////////////////////////////////////////////////////////
 
 // Transitions that set a new offer (i.e. add an entry to metadata.offers)
-const offerTransitions = [
-  transitions.CUSTOMER_MAKE_OFFER,
-  transitions.PROVIDER_MAKE_COUNTER_OFFER,
-  transitions.CUSTOMER_MAKE_COUNTER_OFFER,
-];
+const offerTransitions = [transitions.CUSTOMER_MAKE_OFFER, transitions.PROVIDER_MAKE_COUNTER_OFFER];
 
 /**
  * Checks if the offers array is valid against the (past) transitions array.
@@ -385,13 +444,14 @@ export const isValidNegotiationOffersArray = (transitions, offers) => {
 
 /**
  * Checks if the state is one where an offer is waiting for a response.
+ * Note: each customer offer is its own transaction (the customer's card is held for it).
  *
  * @param {string} state e.g. 'state/offer-pending'
  * @returns {boolean}
  */
 export const isNegotiationState = state => {
   const unprefixedState = state?.indexOf('/') > -1 ? state.split('/')[1] : state;
-  return [states.OFFER_PENDING, states.COUNTER_OFFER_PENDING].includes(unprefixedState);
+  return [states.OFFER_PENDING, states.COUNTER_OFFERED].includes(unprefixedState);
 };
 
 /**

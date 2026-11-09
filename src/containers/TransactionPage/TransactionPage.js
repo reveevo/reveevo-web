@@ -9,6 +9,7 @@ import { useRouteConfiguration } from '../../context/routeConfigurationContext';
 import { FormattedMessage, useIntl } from '../../util/reactIntl';
 import { createResourceLocatorString, findRouteByRouteName } from '../../util/routes';
 import {
+  LINE_ITEM_ITEM,
   LINE_ITEM_OFFER,
   LINE_ITEM_REQUEST,
   LISTING_UNIT_TYPES,
@@ -20,6 +21,8 @@ import { requireListingImage } from '../../util/configHelpers';
 import { getCurrentUserTypeRoles, hasPermissionToViewData } from '../../util/userHelpers.js';
 import { userDisplayNameAsString } from '../../util/data';
 import { isMobileSafari } from '../../util/userAgent';
+import { confirmHandover } from '../../util/api';
+import { storableError } from '../../util/errors';
 import { types as sdkTypes } from '../../util/sdkLoader';
 
 import {
@@ -52,6 +55,7 @@ import {
   OrderBreakdown,
   OrderPanel,
   LayoutSingleColumn,
+  MakeOfferModal,
 } from '../../components';
 
 import TopbarContainer from '../../containers/TopbarContainer/TopbarContainer';
@@ -73,6 +77,9 @@ import ReportModal from './ReportModal/ReportModal';
 import ReviewModal from './ReviewModal/ReviewModal';
 import RequestChangesModal from './RequestChangesModal/RequestChangesModal';
 import MakeCounterOfferModal from './MakeCounterOfferModal/MakeCounterOfferModal';
+import ConfirmOrderModal from './ConfirmOrderModal/ConfirmOrderModal';
+import HandoverPinModal from './HandoverPinModal/HandoverPinModal';
+import HandoverInfo from './HandoverInfo/HandoverInfo';
 import SendMessageForm from './SendMessageForm/SendMessageForm';
 import TransactionPanel from './TransactionPanel/TransactionPanel';
 
@@ -87,6 +94,7 @@ import {
   clearUploadedFiles,
   selectFileUploads,
   downloadFile,
+  fetchTransaction,
 } from './TransactionPage.duck';
 import css from './TransactionPage.module.css';
 
@@ -333,6 +341,11 @@ export const TransactionPageComponent = props => {
   const [isRequestChangesModalOpen, setRequestChangesModalOpen] = useState(false);
   const [changeRequestSubmitted, setChangeRequestSubmitted] = useState(false);
   const [isMakeCounterOfferModalOpen, setMakeCounterOfferModalOpen] = useState(false);
+  // Reveevo product orders: provider confirms the order, hand-over PIN, customer's new offer
+  const [isConfirmOrderModalOpen, setConfirmOrderModalOpen] = useState(false);
+  const [isHandoverPinModalOpen, setHandoverPinModalOpen] = useState(false);
+  const [handoverState, setHandoverState] = useState({ inProgress: false, error: null });
+  const [isMakeNewOfferModalOpen, setMakeNewOfferModalOpen] = useState(false);
   const [counterOfferSubmitted, setCounterOfferSubmitted] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -376,6 +389,7 @@ export const TransactionPageComponent = props => {
     nextTransitions,
     callSetInitialValues,
     onInitializeCardPaymentData,
+    onFetchTransaction,
     onUploadFile,
     fileUploads,
     onClearUploadedFiles,
@@ -519,6 +533,77 @@ export const TransactionPageComponent = props => {
   // This is called from action buttons
   const onOpenMakeCounterOfferModal = () => {
     setMakeCounterOfferModalOpen(true);
+  };
+
+  // Product orders (default-purchase): quantity and delivery method of this transaction
+  const getPurchaseOrderData = () => {
+    const itemLineItem = transaction?.attributes?.lineItems?.find(
+      item => item.code === LINE_ITEM_ITEM && !item.reversal
+    );
+    const quantity = itemLineItem?.quantity?.toNumber?.() || 1;
+    const deliveryMethod = transaction?.attributes?.protectedData?.deliveryMethod;
+    return { quantity, ...(deliveryMethod ? { deliveryMethod } : {}) };
+  };
+
+  // The customer accepts the provider's counter offer by paying it on CheckoutPage.
+  // This creates a new transaction (the card hold of this offer was released).
+  const onPayCounterOffer = () => {
+    redirectToCheckoutPageWithInitialValues(
+      {
+        listing,
+        orderData: { ...getPurchaseOrderData(), counterOfferTransactionId: transaction.id.uuid },
+        confirmPaymentError: null,
+      },
+      listing
+    );
+  };
+
+  // The customer answers the provider's counter offer with a new offer (a new transaction).
+  const onMakeNewOffer = values => {
+    const { offer, quantity, deliveryMethod, message } = values;
+    setMakeNewOfferModalOpen(false);
+    redirectToCheckoutPageWithInitialValues(
+      {
+        listing,
+        orderData: {
+          quantity,
+          ...(deliveryMethod ? { deliveryMethod } : {}),
+          offerInSubunits: offer.amount,
+          previousOfferTransactionId: transaction.id.uuid,
+          ...(message ? { offerMessage: message } : {}),
+        },
+        confirmPaymentError: null,
+      },
+      listing
+    );
+  };
+
+  // The provider confirms the order (or accepts the offer) with the pick-up / collection day
+  const onConfirmOrder = values => {
+    const { date, timeWindow } = values;
+    const isOffer = process?.getState(transaction) === process?.states?.OFFER_PENDING;
+    const transitionName = isOffer
+      ? process.transitions.PROVIDER_ACCEPT_OFFER
+      : process.transitions.PROVIDER_CONFIRM_ORDER;
+    onTransition(transaction.id, transitionName, {
+      protectedData: { handoverSlot: { date, timeWindow } },
+    })
+      .then(() => setConfirmOrderModalOpen(false))
+      .catch(() => {
+        // Error is shown in the modal
+      });
+  };
+
+  // The provider enters the buyer's PIN at the pick up. The server completes the order.
+  const onConfirmHandover = values => {
+    setHandoverState({ inProgress: true, error: null });
+    confirmHandover({ transactionId: transaction.id.uuid, pin: values.pin })
+      .then(() => {
+        setHandoverState({ inProgress: false, error: null });
+        setHandoverPinModalOpen(false);
+        return onFetchTransaction(transaction.id, transactionRole);
+      })
+      .catch(e => setHandoverState({ inProgress: false, error: storableError(e) }));
   };
 
   // Submit review and close the review modal
@@ -750,6 +835,9 @@ export const TransactionPageComponent = props => {
           onOpenReviewModal,
           onOpenRequestChangesModal,
           onOpenMakeCounterOfferModal,
+          onOpenConfirmOrderModal: () => setConfirmOrderModalOpen(true),
+          onOpenMakeNewOfferModal: () => setMakeNewOfferModalOpen(true),
+          onPayCounterOffer,
           onCheckoutRedirect: handleSubmitOrderRequest,
           onMakeOfferRedirect: onMakeOffer,
           intl,
@@ -840,25 +928,6 @@ export const TransactionPageComponent = props => {
 
   const actionButtonContainer = isMobile ? 'mobile' : 'desktop';
 
-  // Accepted purchase offer: the customer chooses the delivery method on OrderPanel (like after
-  // an inquiry). The offered quantity is fixed and the server prices line items with the offer.
-  const isAcceptedPurchaseOffer =
-    processName === PURCHASE_PROCESS_NAME &&
-    stateData.processState === process?.states?.OFFER_ACCEPTED;
-  const acceptedOfferQuantity = isAcceptedPurchaseOffer
-    ? transaction?.attributes?.metadata?.offerOrderData?.stockReservationQuantity
-    : null;
-  const acceptedOfferOrderPanelMaybe = isAcceptedPurchaseOffer
-    ? {
-        hidePrice: true,
-        fixedQuantity: acceptedOfferQuantity,
-        onFetchTransactionLineItems: ({ orderData, ...rest }) =>
-          restOfProps.onFetchTransactionLineItems({
-            orderData: { ...orderData, offerTransactionId: transaction.id },
-            ...rest,
-          }),
-      }
-    : {};
   // TransactionPanel is presentational component
   // that currently handles showing everything inside layout's main view area.
   const panel = isDataAvailable ? (
@@ -968,6 +1037,16 @@ export const TransactionPageComponent = props => {
           }
         />
       }
+      handoverInfo={
+        processName === PURCHASE_PROCESS_NAME ? (
+          <HandoverInfo
+            transaction={transaction}
+            transactionRole={transactionRole}
+            processState={stateData.processState}
+            onOpenHandoverPinModal={() => setHandoverPinModalOpen(true)}
+          />
+        ) : null
+      }
       offer={
         <Offer
           transaction={transaction}
@@ -1019,7 +1098,6 @@ export const TransactionPageComponent = props => {
           marketplaceCurrency={config.currency}
           dayCountAvailableForBooking={config.stripe.dayCountAvailableForBooking}
           marketplaceName={config.marketplaceName}
-          {...acceptedOfferOrderPanelMaybe}
         />
       }
     />
@@ -1168,6 +1246,45 @@ export const TransactionPageComponent = props => {
             minimumOfferSubUnits={isPurchaseOffer ? config.listingMinimumPriceSubUnits : null}
           />
         ) : null}
+        {isPurchaseOffer && isDataAvailable ? (
+          <>
+            <ConfirmOrderModal
+              id="ConfirmOrderModal"
+              isOpen={isConfirmOrderModalOpen}
+              onClose={() => setConfirmOrderModalOpen(false)}
+              onManageDisableScrolling={onManageDisableScrolling}
+              isShipping={transaction?.attributes?.protectedData?.deliveryMethod === 'shipping'}
+              isOffer={stateData.processState === process.states.OFFER_PENDING}
+              onSubmit={onConfirmOrder}
+              inProgress={[
+                process.transitions.PROVIDER_CONFIRM_ORDER,
+                process.transitions.PROVIDER_ACCEPT_OFFER,
+              ].includes(transitionInProgress)}
+              confirmError={transitionError}
+            />
+            <HandoverPinModal
+              id="HandoverPinModal"
+              isOpen={isHandoverPinModalOpen}
+              onClose={() => setHandoverPinModalOpen(false)}
+              onManageDisableScrolling={onManageDisableScrolling}
+              onSubmit={onConfirmHandover}
+              inProgress={handoverState.inProgress}
+              handoverError={handoverState.error}
+            />
+            <MakeOfferModal
+              id="TransactionPage.makeNewOfferModal"
+              isOpen={isMakeNewOfferModalOpen}
+              onClose={() => setMakeNewOfferModalOpen(false)}
+              onManageDisableScrolling={onManageDisableScrolling}
+              price={listing?.attributes?.price}
+              quantity={getPurchaseOrderData().quantity}
+              deliveryMethod={getPurchaseOrderData().deliveryMethod}
+              pickupEnabled={listing?.attributes?.publicData?.pickupEnabled}
+              shippingEnabled={listing?.attributes?.publicData?.shippingEnabled}
+              onSubmit={onMakeNewOffer}
+            />
+          </>
+        ) : null}
       </LayoutSingleColumn>
     </Page>
   );
@@ -1256,6 +1373,11 @@ const TransactionPage = props => {
       dispatch(fetchTransactionLineItems(orderData, listingId, isOwnListing)),
     [dispatch]
   );
+  const config = useConfiguration();
+  const onFetchTransaction = useCallback(
+    (txId, txRole) => dispatch(fetchTransaction(txId, txRole, config)),
+    [dispatch, config]
+  );
   const onFetchTimeSlots = useCallback(
     (listingId, start, end, timeZone, options) =>
       dispatch(fetchTimeSlots(listingId, start, end, timeZone, options)),
@@ -1308,6 +1430,7 @@ const TransactionPage = props => {
       onInitializeCardPaymentData={onInitializeCardPaymentData}
       onFetchTransactionLineItems={onFetchTransactionLineItems}
       onFetchTimeSlots={onFetchTimeSlots}
+      onFetchTransaction={onFetchTransaction}
       onUploadFile={onUploadFile}
       onClearUploadedFiles={onClearUploadedFiles}
       onDownloadFile={onDownloadFile}

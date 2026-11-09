@@ -158,3 +158,18 @@ export const deleteUserAccount = body => {
 export const syncPickupLocations = () => {
   return post('/api/sync-pickup-locations', {});
 };
+
+// Get the hand-over PIN of an order. Only the customer of the transaction gets it.
+//
+// See `server/api/handover-pin.js` to see what data should be sent in the body.
+export const fetchHandoverPin = body => {
+  return post('/api/handover-pin', body);
+};
+
+// Confirm the hand-over of an order with the customer's PIN (provider at pick up,
+// or Reveevo's courier at delivery).
+//
+// See `server/api/confirm-handover.js` to see what data should be sent in the body.
+export const confirmHandover = body => {
+  return post('/api/confirm-handover', body);
+};

@@ -201,11 +201,12 @@ const renderForm = formRenderProps => {
     }
   };
 
-  // An offer is made for the selected quantity.
-  // Like with inquiries, the delivery method is chosen when the accepted offer is paid.
+  // The offer is made for the selected quantity (and delivery method, if chosen already).
+  // The customer's card is held for it on CheckoutPage, so the shipping fee is included.
   const handleMakeOffer = e => {
     if (validateOrderDetails(e, false)) {
-      onMakeOffer({ quantity: Number.parseInt(values.quantity, 10) });
+      const { quantity, deliveryMethod } = values;
+      onMakeOffer({ quantity: Number.parseInt(quantity, 10), deliveryMethod });
     }
   };
 
@@ -351,7 +352,7 @@ const renderForm = formRenderProps => {
  * @param {boolean} props.fetchLineItemsInProgress - Whether the line items are being fetched
  * @param {propTypes.error} props.fetchLineItemsError - The error for fetching the line items
  * @param {Function} props.onContactUser - The function to contact the user
- * @param {Function} [props.onMakeOffer] - Called with { quantity } when the customer wants to make an offer
+ * @param {Function} [props.onMakeOffer] - Called with { quantity, deliveryMethod } when the customer wants to make an offer
  * @param {number} [props.fixedQuantity] - Quantity that can't be changed (e.g. the quantity of an accepted offer)
  * @param {'h2'|'h3'} [props.sectionHeadingAs='h3'] - Semantic heading level for form section titles
  * @returns {JSX.Element}

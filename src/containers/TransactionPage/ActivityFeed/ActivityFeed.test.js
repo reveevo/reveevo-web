@@ -130,7 +130,7 @@ describe('ActivityFeed', () => {
     // The first relevant transition in the process
     const firstLI = within(items[0]);
     expect(
-      firstLI.getByText('TransactionPage.ActivityFeed.default-purchase.purchased')
+      firstLI.getByText('TransactionPage.ActivityFeed.default-purchase.pending-confirmation')
     ).toBeInTheDocument();
     expect(firstLI.getByText('2023-05-01')).toBeInTheDocument();
 

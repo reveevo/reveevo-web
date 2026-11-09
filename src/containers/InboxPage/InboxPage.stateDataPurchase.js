@@ -15,14 +15,17 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
     .cond([states.INQUIRY, _], () => {
       return { processName, processState, actionNeeded: true };
     })
+    .cond([states.PENDING_CONFIRMATION, PROVIDER], () => {
+      return { processName, processState, actionNeeded: true, isSaleNotification: true };
+    })
     .cond([states.OFFER_PENDING, PROVIDER], () => {
       return { processName, processState, actionNeeded: true };
     })
-    .cond([states.COUNTER_OFFER_PENDING, CUSTOMER], () => {
+    .cond([states.COUNTER_OFFERED, CUSTOMER], () => {
       return { processName, processState, actionNeeded: true };
     })
-    .cond([states.OFFER_ACCEPTED, CUSTOMER], () => {
-      return { processName, processState, actionNeeded: true };
+    .cond([states.DECLINED, _], () => {
+      return { processName, processState, isFinal: true };
     })
     .cond([states.OFFER_DECLINED, _], () => {
       return { processName, processState, isFinal: true };
@@ -31,6 +34,15 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
       return { processName, processState, isFinal: true };
     })
     .cond([states.OFFER_EXPIRED, _], () => {
+      return { processName, processState, isFinal: true };
+    })
+    .cond([states.OFFER_PAYMENT_EXPIRED, _], () => {
+      return { processName, processState, isFinal: true };
+    })
+    .cond([states.COUNTER_OFFER_ACCEPTED, _], () => {
+      return { processName, processState, isFinal: true };
+    })
+    .cond([states.CUSTOMER_COUNTERED, _], () => {
       return { processName, processState, isFinal: true };
     })
     .cond([states.PENDING_PAYMENT, CUSTOMER], () => {
@@ -42,8 +54,8 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
     .cond([states.CANCELED, _], () => {
       return { processName, processState, isFinal: true };
     })
-    .cond([states.PURCHASED, PROVIDER], () => {
-      return { processName, processState, actionNeeded: true, isSaleNotification: true };
+    .cond([states.PURCHASED, _], () => {
+      return { processName, processState, actionNeeded: true };
     })
     .cond([states.DELIVERED, CUSTOMER], () => {
       return { processName, processState, actionNeeded: true };

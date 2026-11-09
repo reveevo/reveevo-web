@@ -15,6 +15,7 @@ const pageDataLoadingAPI = getPageDataLoadingAPI();
 const AuthenticationPage = loadable(() => import(/* webpackChunkName: "AuthenticationPage" */ '../containers/AuthenticationPage/AuthenticationPage'));
 const CheckoutPage = loadable(() => import(/* webpackChunkName: "CheckoutPage" */ '../containers/CheckoutPage/CheckoutPage'));
 const CMSPage = loadable(() => import(/* webpackChunkName: "CMSPage" */ '../containers/CMSPage/CMSPage'));
+const DeliveryConfirmationPage = loadable(() => import(/* webpackChunkName: "DeliveryConfirmationPage" */ '../containers/DeliveryConfirmationPage/DeliveryConfirmationPage'));
 const DeliveryAddressPage = loadable(() => import(/* webpackChunkName: "DeliveryAddressPage" */ '../containers/DeliveryAddressPage/DeliveryAddressPage'));
 const ContactDetailsPage = loadable(() => import(/* webpackChunkName: "ContactDetailsPage" */ '../containers/ContactDetailsPage/ContactDetailsPage'));
 const EditListingPage = loadable(() => import(/* webpackChunkName: "EditListingPage" */ '../containers/EditListingPage/EditListingPage'));
@@ -340,6 +341,12 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       authPage: 'LoginPage',
       component: ContactDetailsPage,
       loadData: pageDataLoadingAPI.ContactDetailsPage.loadData,
+    },
+    {
+      // Reveevo's courier confirms deliveries with the buyer's PIN (no login needed)
+      path: '/delivery/:id',
+      name: 'DeliveryConfirmationPage',
+      component: DeliveryConfirmationPage,
     },
     {
       path: '/account/address',

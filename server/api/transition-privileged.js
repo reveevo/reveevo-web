@@ -3,12 +3,9 @@ const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTot
 const { transactionLineItems } = require('../api-util/lineItems');
 const {
   addOfferToMetadata,
-  getAcceptedOfferAmount,
   getAmountFromPreviousOffer,
-  getOfferOrderData,
   isIntentionToMakeCounterOffer,
   isIntentionToMakeOffer,
-  isIntentionToPayAcceptedOffer,
   isIntentionToRevokeCounterOffer,
   isIntentionToUpdateOffer,
   throwErrorIfNegotiationOfferHasInvalidHistory,
@@ -27,6 +24,11 @@ const { Money } = sharetribeSdk.types;
 
 const transactionPromise = (sdk, id) =>
   sdk.transactions.show({ id, include: ['listing', 'provider'] });
+
+// default-purchase process: the provider's counter offer only saves the offer to metadata.
+// The customer's card hold is released and the customer pays the counter offer in a new
+// transaction, so these transitions don't set line items.
+const METADATA_ONLY_TRANSITIONS = ['transition/provider-make-counter-offer'];
 const getListingRelationShip = transactionShowAPIData => {
   const { data, included } = transactionShowAPIData;
   const { relationships } = data;
@@ -69,29 +71,12 @@ const getRoleBasedBodyParams = (orderData, bodyParams) => {
   }
 };
 
-// default-purchase process: the quantity of an offer was saved when the offer was made.
-// Use it instead of client's data, so the item count can't change after the price is agreed.
-const getBodyParamsWithOfferOrderData = (bodyParams, offerOrderData) => {
-  const { stockReservationQuantity } = offerOrderData;
-  if (!isIntentionToPayAcceptedOffer(bodyParams.transition) || !stockReservationQuantity) {
-    return bodyParams;
-  }
-  return { ...bodyParams, params: { ...bodyParams.params, stockReservationQuantity } };
-};
-
-const getFullOrderData = (orderData, bodyParams, currency, offers, transitions) => {
+const getFullOrderData = (orderData, bodyParams, currency, offers) => {
   const { offerInSubunits } = orderData || {};
   const transitionName = bodyParams.transition;
 
   const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
   const orderDataAndParams = { ...orderData, ...roleBasedBodyParams.params, currency };
-
-  if (isIntentionToPayAcceptedOffer(transitionName)) {
-    return {
-      ...orderDataAndParams,
-      offer: new Money(getAcceptedOfferAmount(offers, transitions), currency),
-    };
-  }
 
   const isNewOffer =
     isIntentionToMakeOffer(offerInSubunits, transitionName) ||
@@ -138,7 +123,10 @@ const getUpdatedMetadata = (orderData, transition, existingMetadata) => {
 };
 
 module.exports = (req, res) => {
-  const { isSpeculative, orderData, bodyParams, queryParams } = req.body || {};
+  const { isSpeculative, orderData: clientOrderData, bodyParams, queryParams } = req.body || {};
+  // The offer price and the shipping fee are only ever set here on the server.
+  // Ignore them if the client sends them.
+  const { offer, shippingFee, ...orderData } = clientOrderData || {};
 
   // Share one cookie token store so a refresh during transactions.show is reused for exchangeToken.
   const tokenStore = createCookieTokenStore(req, res);
@@ -146,8 +134,8 @@ module.exports = (req, res) => {
   const transitionName = bodyParams.transition;
   let lineItems = null;
   let metadataMaybe = {};
-  let trustedBodyParams = bodyParams;
   let deliveryMaybe = {};
+  const isMetadataOnly = METADATA_ONLY_TRANSITIONS.includes(transitionName);
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
     .then(async responses => {
@@ -170,14 +158,8 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      // The offer price and the shipping fee are only ever set here on the server.
-      // Ignore them if the client sends them.
-      const { offer, shippingFee, ...clientOrderData } = orderData || {};
-      const offerOrderData = getOfferOrderData(existingMetadata);
-      trustedBodyParams = getBodyParamsWithOfferOrderData(bodyParams, offerOrderData);
-
       // Shipped purchases: the fee depends on the vehicle and the distance between the parties.
-      const shippingQuote = needsShippingQuote(transitionName, clientOrderData)
+      const shippingQuote = needsShippingQuote(transitionName, orderData)
         ? await getShippingQuote({
             sdk,
             listing,
@@ -185,27 +167,24 @@ module.exports = (req, res) => {
           })
         : null;
       deliveryMaybe = shippingQuote ? { delivery: shippingQuote.delivery } : {};
-      const trustedOrderData = { ...clientOrderData, ...offerOrderData };
 
-      lineItems = transactionLineItems(
-        listing,
-        {
-          ...getFullOrderData(
-            trustedOrderData,
-            trustedBodyParams,
-            currency,
-            existingOffers,
-            transitions
-          ),
-          // Shipping fee is set last, so that client's params can't override it.
-          shippingFee: shippingQuote?.shippingFee,
-        },
-        providerCommission,
-        customerCommission
-      );
+      lineItems = isMetadataOnly
+        ? null
+        : transactionLineItems(
+            listing,
+            {
+              ...getFullOrderData(orderData, bodyParams, currency, existingOffers),
+              // Set last, so that client's params can't override it.
+              shippingFee: shippingQuote?.shippingFee,
+            },
+            providerCommission,
+            customerCommission
+          );
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
-      assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
+      if (lineItems) {
+        assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
+      }
 
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
 
@@ -218,21 +197,22 @@ module.exports = (req, res) => {
       //   related protected data fields if the transition is from a provider
       // - If you customize the transaction process to allow customers to update protected data
       //   after a provider's offer, you can add that logic in this same function.
-      const roleBasedBodyParams = getRoleBasedBodyParams(orderData, trustedBodyParams);
+      const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
-      // Both delivery addresses are saved to the transaction, so that both parties see them.
+      // Both delivery addresses are saved to the transaction (shipping is organized by Reveevo).
       const protectedDataMaybe = Object.keys(deliveryMaybe).length
         ? { protectedData: { ...restParams.protectedData, ...deliveryMaybe } }
         : {};
+      const lineItemsMaybe = lineItems ? { lineItems } : {};
 
       // Add lineItems to the body params
       const body = {
-        ...trustedBodyParams,
+        ...bodyParams,
         params: {
           ...restParams,
           ...protectedDataMaybe,
-          lineItems,
+          ...lineItemsMaybe,
           ...metadataMaybe,
         },
       };

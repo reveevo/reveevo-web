@@ -5542,7 +5542,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" InboxItem wit
         class="stateName stateActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.purchased.status
+          InboxPage.default-purchase.pending-confirmation.status
         </span>
       </div>
     </div>
@@ -5922,6 +5922,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/confirm-offer-payment 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-CONFIRM_OFFER_PAYMENT-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.offer-pending.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/confirm-payment 1`] = `
 <div
   class="item"
@@ -5980,7 +6042,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.purchased.status
+          InboxPage.default-purchase.pending-confirmation.status
         </span>
       </div>
     </div>
@@ -6039,10 +6101,10 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       class="itemState"
     >
       <div
-        class="stateName stateNoActionNeeded"
+        class="stateName stateConcluded stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.offer-accepted.status
+          InboxPage.default-purchase.counter-offer-accepted.status
         </span>
       </div>
     </div>
@@ -6163,10 +6225,10 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       class="itemState"
     >
       <div
-        class="stateName stateActionNeeded"
+        class="stateName stateConcluded stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.offer-pending.status
+          InboxPage.default-purchase.customer-countered.status
         </span>
       </div>
     </div>
@@ -6225,10 +6287,10 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       class="itemState"
     >
       <div
-        class="stateName stateActionNeeded"
+        class="stateName stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.offer-pending.status
+          InboxPage.default-purchase.offer-payment-pending.status
         </span>
       </div>
     </div>
@@ -6360,7 +6422,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
-exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/expire-accepted-offer 1`] = `
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/expire-confirmation 1`] = `
 <div
   class="item"
 >
@@ -6381,7 +6443,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
   </div>
   <a
     class="itemLink"
-    href="/sale/id-purchase-EXPIRE_ACCEPTED_OFFER-sale"
+    href="/sale/id-purchase-EXPIRE_CONFIRMATION-sale"
   >
     <div
       class="rowNotificationDot"
@@ -6414,7 +6476,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateConcluded stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.offer-expired.status
+          InboxPage.default-purchase.declined.status
         </span>
       </div>
     </div>
@@ -6601,6 +6663,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       >
         <span>
           InboxPage.default-purchase.offer-expired.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/expire-offer-payment 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-EXPIRE_OFFER_PAYMENT-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.offer-payment-expired.status
         </span>
       </div>
     </div>
@@ -6852,68 +6976,6 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
-exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/mark-delivered 1`] = `
-<div
-  class="item"
->
-  <div
-    class="itemAvatar"
-  >
-    <a
-      class="root"
-      href="/u/customer"
-      title="customer display name"
-    >
-      <span
-        class="initials"
-      >
-        TT
-      </span>
-    </a>
-  </div>
-  <a
-    class="itemLink"
-    href="/sale/id-purchase-MARK_DELIVERED-sale"
-  >
-    <div
-      class="rowNotificationDot"
-    />
-    <div
-      class="itemUsername"
-    >
-      <span
-        class=""
-      >
-        customer display name
-      </span>
-    </div>
-    <div
-      class="itemTitle"
-    >
-      listing1 title
-    </div>
-    <div
-      class="itemDetails"
-    >
-      <span>
-        InboxPage.quantity
-      </span>
-    </div>
-    <div
-      class="itemState"
-    >
-      <div
-        class="stateName stateNoActionNeeded"
-      >
-        <span>
-          InboxPage.default-purchase.delivered.status
-        </span>
-      </div>
-    </div>
-  </a>
-</div>
-`;
-
 exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/mark-received 1`] = `
 <div
   class="item"
@@ -7100,6 +7162,192 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/operator-cancel-from-collected 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-OPERATOR_CANCEL_FROM_COLLECTED-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/operator-confirm-delivery 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-OPERATOR_CONFIRM_DELIVERY-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.received.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/operator-confirm-handover 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-OPERATOR_CONFIRM_HANDOVER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.received.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/operator-dispute 1`] = `
 <div
   class="item"
@@ -7155,6 +7403,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       >
         <span>
           InboxPage.default-purchase.disputed.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/operator-mark-collected 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-OPERATOR_MARK_COLLECTED-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.collected.status
         </span>
       </div>
     </div>
@@ -7275,10 +7585,72 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       class="itemState"
     >
       <div
-        class="stateName stateNoActionNeeded"
+        class="stateName stateActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.offer-accepted.status
+          InboxPage.default-purchase.purchased.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/provider-confirm-order 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-PROVIDER_CONFIRM_ORDER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.purchased.status
         </span>
       </div>
     </div>
@@ -7348,6 +7720,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/provider-decline-order 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-PROVIDER_DECLINE_ORDER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.declined.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/provider-make-counter-offer 1`] = `
 <div
   class="item"
@@ -7402,7 +7836,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.counter-offer-pending.status
+          InboxPage.default-purchase.counter-offered.status
         </span>
       </div>
     </div>
@@ -7534,7 +7968,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
-exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/request-payment-after-offer 1`] = `
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/request-payment-for-counter-offer 1`] = `
 <div
   class="item"
 >
@@ -7555,7 +7989,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
   </div>
   <a
     class="itemLink"
-    href="/sale/id-purchase-REQUEST_PAYMENT_AFTER_OFFER-sale"
+    href="/sale/id-purchase-REQUEST_PAYMENT_FOR_COUNTER_OFFER-sale"
   >
     <div
       class="rowNotificationDot"

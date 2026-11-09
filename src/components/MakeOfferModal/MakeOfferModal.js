@@ -1,14 +1,13 @@
 import React from 'react';
 import { Form as FinalForm } from 'react-final-form';
 
-import appSettings from '../../../config/settings';
-import { useConfiguration } from '../../../context/configurationContext';
-import { FormattedMessage, useIntl } from '../../../util/reactIntl';
-import { propTypes } from '../../../util/types';
-import { types as sdkTypes } from '../../../util/sdkLoader';
-import { formatMoney } from '../../../util/currency';
-import { composeValidators, moneySubUnitAmountAtLeast, required } from '../../../util/validators';
-import { isTooManyRequestsError } from '../../../util/errors';
+import appSettings from '../../config/settings';
+import { useConfiguration } from '../../context/configurationContext';
+import { FormattedMessage, useIntl } from '../../util/reactIntl';
+import { propTypes } from '../../util/types';
+import { types as sdkTypes } from '../../util/sdkLoader';
+import { formatMoney } from '../../util/currency';
+import { composeValidators, moneySubUnitAmountAtLeast, required } from '../../util/validators';
 
 import {
   FieldCurrencyInput,
@@ -18,7 +17,7 @@ import {
   Heading,
   Modal,
   PrimaryButton,
-} from '../../../components';
+} from '../../components';
 
 import css from './MakeOfferModal.module.css';
 
@@ -40,10 +39,9 @@ const MakeOfferForm = props => (
         invalid,
         price,
         maxQuantity,
+        hasMultipleDeliveryMethods,
         minimumOfferSubUnits,
         values,
-        inProgress,
-        makeOfferError,
         intl,
       } = formRenderProps;
 
@@ -67,12 +65,6 @@ const MakeOfferForm = props => (
         )
       );
 
-      const errorMessage = isTooManyRequestsError(makeOfferError) ? (
-        <FormattedMessage id="MakeOfferModal.tooManyRequestsError" />
-      ) : makeOfferError ? (
-        <FormattedMessage id="MakeOfferModal.submitFailed" />
-      ) : null;
-
       return (
         <Form onSubmit={handleSubmit}>
           <p className={css.listedPrice}>
@@ -95,6 +87,27 @@ const MakeOfferForm = props => (
               ))}
             </FieldSelect>
           ) : null}
+          {hasMultipleDeliveryMethods ? (
+            <FieldSelect
+              id="MakeOfferModal.deliveryMethod"
+              name="deliveryMethod"
+              className={css.field}
+              label={intl.formatMessage({ id: 'MakeOfferModal.deliveryMethodLabel' })}
+              validate={required(
+                intl.formatMessage({ id: 'MakeOfferModal.deliveryMethodRequired' })
+              )}
+            >
+              <option disabled value="">
+                {intl.formatMessage({ id: 'ProductOrderForm.selectDeliveryMethodOption' })}
+              </option>
+              <option value="pickup">
+                {intl.formatMessage({ id: 'ProductOrderForm.pickupOption' })}
+              </option>
+              <option value="shipping">
+                {intl.formatMessage({ id: 'ProductOrderForm.shippingOption' })}
+              </option>
+            </FieldSelect>
+          ) : null}
           <FieldCurrencyInput
             id="MakeOfferModal.offer"
             name="offer"
@@ -112,13 +125,7 @@ const MakeOfferForm = props => (
             label={intl.formatMessage({ id: 'MakeOfferModal.messageLabel' })}
             placeholder={intl.formatMessage({ id: 'MakeOfferModal.messagePlaceholder' })}
           />
-          {errorMessage ? <p className={css.error}>{errorMessage}</p> : null}
-          <PrimaryButton
-            className={css.submitButton}
-            type="submit"
-            inProgress={inProgress}
-            disabled={invalid || inProgress}
-          >
+          <PrimaryButton className={css.submitButton} type="submit" disabled={invalid}>
             <FormattedMessage id="MakeOfferModal.submit" />
           </PrimaryButton>
         </Form>
@@ -129,6 +136,8 @@ const MakeOfferForm = props => (
 
 /**
  * Modal where a customer makes an offer (a price per item) on a product listing.
+ * The offer continues on CheckoutPage, where the customer's card is held for the offered price
+ * (the provider accepts the offer = the order is confirmed).
  *
  * @component
  * @param {Object} props
@@ -137,17 +146,48 @@ const MakeOfferForm = props => (
  * @param {Function} props.onClose - Called when the modal is closed
  * @param {Function} props.onManageDisableScrolling - Passed through to Modal
  * @param {propTypes.money} props.price - The listed price of a single item
- * @param {number} props.quantity - The initial number of items the offer is for
+ * @param {number} [props.quantity] - The initial number of items the offer is for
  * @param {number} [props.maxQuantity] - The most items the offer can be for (shows a quantity picker if > 1)
- * @param {Function} props.onSubmit - Called with { offer, quantity, message }
- * @param {boolean} [props.inProgress] - Whether the offer is being submitted
- * @param {propTypes.error} [props.makeOfferError] - Error from the submission
+ * @param {boolean} [props.pickupEnabled] - Whether the listing has direct pick up
+ * @param {boolean} [props.shippingEnabled] - Whether the listing has shipping (organized by Reveevo)
+ * @param {string} [props.deliveryMethod] - The initial delivery method
+ * @param {Function} props.onSubmit - Called with { offer, quantity, deliveryMethod, message }
  * @returns {JSX.Element}
  */
 const MakeOfferModal = props => {
   const intl = useIntl();
   const config = useConfiguration();
-  const { id, isOpen, onClose, onManageDisableScrolling, price, quantity, ...formProps } = props;
+  const {
+    id,
+    isOpen,
+    onClose,
+    onManageDisableScrolling,
+    price,
+    quantity,
+    maxQuantity,
+    pickupEnabled,
+    shippingEnabled,
+    deliveryMethod,
+    onSubmit,
+  } = props;
+  const hasMultipleDeliveryMethods = !!pickupEnabled && !!shippingEnabled;
+  const singleDeliveryMethod = shippingEnabled ? 'shipping' : pickupEnabled ? 'pickup' : null;
+  const initialDeliveryMethod = hasMultipleDeliveryMethods ? deliveryMethod : singleDeliveryMethod;
+
+  const handleSubmit = values => {
+    const {
+      offer,
+      message,
+      quantity: quantityRaw,
+      deliveryMethod: selectedDeliveryMethod,
+    } = values;
+    onSubmit({
+      offer,
+      message: message?.trim(),
+      quantity: Number.parseInt(quantityRaw, 10) || 1,
+      deliveryMethod: selectedDeliveryMethod || singleDeliveryMethod,
+    });
+  };
 
   return (
     <Modal
@@ -167,10 +207,15 @@ const MakeOfferModal = props => {
       {isOpen && price ? (
         <MakeOfferForm
           price={price}
-          initialValues={{ quantity: `${quantity || 1}` }}
+          maxQuantity={maxQuantity}
+          hasMultipleDeliveryMethods={hasMultipleDeliveryMethods}
+          initialValues={{
+            quantity: `${quantity || 1}`,
+            ...(initialDeliveryMethod ? { deliveryMethod: initialDeliveryMethod } : {}),
+          }}
           minimumOfferSubUnits={config.listingMinimumPriceSubUnits || 0}
           intl={intl}
-          {...formProps}
+          onSubmit={handleSubmit}
         />
       ) : null}
     </Modal>

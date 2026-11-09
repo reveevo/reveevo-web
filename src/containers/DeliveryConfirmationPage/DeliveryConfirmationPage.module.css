@@ -1,0 +1,22 @@
+@import '../../styles/customMediaQueries.css';
+
+.content {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 36px 24px;
+
+  @media (--viewportMedium) {
+    padding: 64px 24px;
+  }
+}
+
+.description {
+  margin: 12px 0 32px 0;
+  color: var(--colorGrey700);
+}
+
+.success {
+  margin: 16px 0 0 0;
+  color: var(--colorSuccess);
+}

@@ -1,0 +1,8 @@
+.field {
+  margin-bottom: 24px;
+}
+
+.error {
+  color: var(--colorFail);
+  margin: 0 0 16px 0;
+}

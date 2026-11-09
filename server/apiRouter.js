@@ -17,6 +17,8 @@ const initiatePrivileged = require('./api/initiate-privileged');
 const transitionPrivileged = require('./api/transition-privileged');
 const deleteAccount = require('./api/delete-account');
 const syncPickupLocations = require('./api/sync-pickup-locations');
+const handoverPin = require('./api/handover-pin');
+const confirmHandover = require('./api/confirm-handover');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
 
@@ -58,6 +60,8 @@ router.post('/initiate-privileged', initiatePrivileged);
 router.post('/transition-privileged', transitionPrivileged);
 router.post('/delete-account', deleteAccount);
 router.post('/sync-pickup-locations', syncPickupLocations);
+router.post('/handover-pin', handoverPin);
+router.post('/confirm-handover', confirmHandover);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

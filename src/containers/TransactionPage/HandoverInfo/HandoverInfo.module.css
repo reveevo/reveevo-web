@@ -1,0 +1,40 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  margin: 24px 24px 0 24px;
+  padding: 16px;
+  border: 1px solid var(--colorGrey100);
+  border-radius: var(--borderRadiusMedium);
+
+  @media (--viewportLarge) {
+    margin: 32px 0 0 0;
+  }
+}
+
+.heading {
+  composes: h4 from global;
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+.slot,
+.info,
+.pinLabel {
+  margin: 0 0 12px 0;
+}
+
+.info,
+.pinLabel {
+  color: var(--colorGrey700);
+}
+
+.pin {
+  margin: 0;
+  font-size: 32px;
+  font-weight: var(--fontWeightBold);
+  letter-spacing: 8px;
+}
+
+.pinButton {
+  margin-top: 8px;
+}

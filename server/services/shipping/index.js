@@ -29,10 +29,12 @@ const createShippingError = (code, data = {}) => {
 };
 
 // default-purchase process: transitions where the customer pays for the order
+// (offers hold the customer's card too, so the shipping fee is included in the offer)
 const PAYMENT_TRANSITIONS = [
   'transition/request-payment',
   'transition/request-payment-after-inquiry',
-  'transition/request-payment-after-offer',
+  'transition/request-payment-for-counter-offer',
+  'transition/customer-make-offer',
 ];
 
 /**

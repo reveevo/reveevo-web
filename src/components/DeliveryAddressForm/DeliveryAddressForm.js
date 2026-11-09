@@ -41,7 +41,7 @@ const NeighborhoodAutofill = () => {
     if (selectedPlace?.neighborhood) {
       form.change('neighborhood', selectedPlace.neighborhood);
     }
-  }, [selectedPlace]);
+  }, [form, selectedPlace]);
 
   return null;
 };

@@ -24,6 +24,7 @@ import LineItemSubTotalMaybe from './LineItemSubTotalMaybe';
 import LineItemShippingFeeMaybe from './LineItemShippingFeeMaybe';
 import LineItemPickupFeeMaybe from './LineItemPickupFeeMaybe';
 import LineItemCustomerCommissionMaybe from './LineItemCustomerCommissionMaybe';
+import LineItemIvaMaybe from './LineItemIvaMaybe';
 import LineItemCustomerCommissionRefundMaybe from './LineItemCustomerCommissionRefundMaybe';
 import LineItemProviderCommissionMaybe from './LineItemProviderCommissionMaybe';
 import LineItemProviderCommissionRefundMaybe from './LineItemProviderCommissionRefundMaybe';
@@ -123,13 +124,16 @@ export const OrderBreakdownComponent = props => {
       <LineItemPickupFeeMaybe lineItems={lineItems} intl={intl} />
       <LineItemUnknownItemsMaybe lineItems={lineItems} isProvider={isProvider} intl={intl} />
 
-      <LineItemSubTotalMaybe
-        lineItems={lineItems}
-        code={lineItemUnitType}
-        userRole={userRole}
-        intl={intl}
-        marketplaceCurrency={currency}
-      />
+      {/* Reveevo: customers see item price + shipping + fee + IVA = total (no subtotal) */}
+      {isCustomer ? null : (
+        <LineItemSubTotalMaybe
+          lineItems={lineItems}
+          code={lineItemUnitType}
+          userRole={userRole}
+          intl={intl}
+          marketplaceCurrency={currency}
+        />
+      )}
       <LineItemRefundMaybe lineItems={lineItems} intl={intl} marketplaceCurrency={currency} />
 
       <LineItemCustomerCommissionMaybe
@@ -144,6 +148,7 @@ export const OrderBreakdownComponent = props => {
         marketplaceName={marketplaceName}
         intl={intl}
       />
+      <LineItemIvaMaybe lineItems={lineItems} isCustomer={isCustomer} intl={intl} />
 
       <LineItemProviderCommissionMaybe
         lineItems={lineItems}

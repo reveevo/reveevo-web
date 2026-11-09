@@ -442,7 +442,13 @@ const OrderPanel = props => {
   const maxOfferQuantity = allowOrdersOfMultipleItems ? currentStock : 1;
   const handleMakeOffer =
     typeof onMakeOffer === 'function'
-      ? orderDetails => onMakeOffer({ ...orderDetails, maxQuantity: maxOfferQuantity })
+      ? orderDetails =>
+          onMakeOffer({
+            ...orderDetails,
+            maxQuantity: maxOfferQuantity,
+            pickupEnabled: pickupEnabled && displayPickup,
+            shippingEnabled: shippingEnabled && displayShipping,
+          })
       : null;
   // On mobile, the offer button is next to "Buy now" in the bottom bar (not inside the order modal)
   const showMakeOfferInMobileBar =

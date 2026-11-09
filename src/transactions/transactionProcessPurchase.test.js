@@ -9,7 +9,7 @@ describe('transactionProcessPurchase offers', () => {
   const pastTransitions = [
     { transition: transitions.CUSTOMER_MAKE_OFFER, by: 'customer' },
     { transition: transitions.PROVIDER_MAKE_COUNTER_OFFER, by: 'provider' },
-    { transition: transitions.CUSTOMER_ACCEPT_COUNTER_OFFER, by: 'customer' },
+    { transition: transitions.CUSTOMER_DECLINE_COUNTER_OFFER, by: 'customer' },
   ];
   const offers = [
     { offerInSubunits: 8000, by: 'customer', transition: transitions.CUSTOMER_MAKE_OFFER },
@@ -27,7 +27,7 @@ describe('transactionProcessPurchase offers', () => {
 
   it('isNegotiationState is true only when an offer waits for a response', () => {
     expect(isNegotiationState('state/offer-pending')).toBe(true);
-    expect(isNegotiationState('counter-offer-pending')).toBe(true);
+    expect(isNegotiationState('counter-offered')).toBe(true);
     expect(isNegotiationState('state/offer-accepted')).toBe(false);
     expect(isNegotiationState(null)).toBe(false);
   });

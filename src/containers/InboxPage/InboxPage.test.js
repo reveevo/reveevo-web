@@ -169,12 +169,12 @@ describe('InboxPage', () => {
 
         const item1 = items[0];
         expect(item1.getAttribute('href')).toContain('/order/order1');
-        const status1 = within(item1).getByText('InboxPage.default-purchase.purchased.status');
+        const status1 = within(item1).getByText('InboxPage.default-purchase.pending-confirmation.status');
         expect(status1).toBeInTheDocument();
 
         const item2 = items[1];
         expect(item2.getAttribute('href')).toContain('/order/order2');
-        const status2 = within(item2).getByText('InboxPage.default-purchase.purchased.status');
+        const status2 = within(item2).getByText('InboxPage.default-purchase.pending-confirmation.status');
         expect(status2).toBeInTheDocument();
       });
     });
@@ -266,12 +266,12 @@ describe('InboxPage', () => {
 
         const item1 = items[0];
         expect(item1.getAttribute('href')).toContain('/sale/sale1');
-        const status1 = within(item1).getByText('InboxPage.default-purchase.purchased.status');
+        const status1 = within(item1).getByText('InboxPage.default-purchase.pending-confirmation.status');
         expect(status1).toBeInTheDocument();
 
         const item2 = items[1];
         expect(item2.getAttribute('href')).toContain('/sale/sale2');
-        const status2 = within(item2).getByText('InboxPage.default-purchase.purchased.status');
+        const status2 = within(item2).getByText('InboxPage.default-purchase.pending-confirmation.status');
         expect(status2).toBeInTheDocument();
       });
     });

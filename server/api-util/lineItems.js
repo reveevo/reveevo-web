@@ -5,6 +5,7 @@ const {
   getCustomerCommissionMaybe,
 } = require('./lineItemHelpers');
 const { types } = require('sharetribe-flex-sdk');
+const { getIvaLineItemMaybe } = require('../services/iva');
 const { Money } = types;
 
 /**
@@ -237,5 +238,6 @@ exports.transactionLineItems = (listing, orderData, providerCommission, customer
     ...getCustomerCommissionMaybe(customerCommission, order, currency),
   ];
 
-  return lineItems;
+  // IVA on the shipping fee and commissions (paid by the customer, see server/services/iva)
+  return [...lineItems, ...getIvaLineItemMaybe(lineItems, currency)];
 };

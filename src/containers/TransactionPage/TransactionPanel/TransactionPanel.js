@@ -120,6 +120,7 @@ export class TransactionPanelComponent extends Component {
       showBookingLocation = false,
       requestQuote,
       offer,
+      handoverInfo,
       fileAttachments,
       activityFeed,
       actionButtons,
@@ -229,6 +230,7 @@ export class TransactionPanelComponent extends Component {
 
             {requestQuote}
             {offer}
+            {handoverInfo}
             {transactionFieldsComponent}
             {fileAttachments}
 
