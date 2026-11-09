@@ -132,6 +132,7 @@
     "postcss-preset-env": "^11.6.1",
     "prettier": "^1.18.2",
     "prompts": "^2.4.2",
+    "react-doctor": "^0.9.22",
     "recursive-readdir": "^2.2.2",
     "resolve": "^1.22.12",
     "resolve-url-loader": "^5.0.0",
@@ -228,7 +229,8 @@
     "test-server": "jest --roots ./server --testMatch='**/server/**/*.test.js' --testEnvironment=node",
     "heroku-postbuild": "yarn run build",
     "postinstall": "patch-package",
-    "translate": "node scripts/translations.js"
+    "translate": "node scripts/translations.js",
+    "doctor": "react-doctor --verbose"
   },
   "browserslist": {
     "production": [
