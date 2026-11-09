@@ -143,12 +143,12 @@ describe('getShippingQuote', () => {
     expect(needsShippingQuote('transition/request-payment', { deliveryMethod: 'pickup' })).toBe(
       false
     );
-    // Offers hold the customer's card, so the shipping fee is included in the offer
+    // An accepted offer is paid like a normal order, with the shipping fee
     expect(
-      needsShippingQuote('transition/customer-make-offer', { deliveryMethod: 'shipping' })
+      needsShippingQuote('transition/request-payment-after-offer', { deliveryMethod: 'shipping' })
     ).toBe(true);
     expect(
-      needsShippingQuote('transition/provider-make-counter-offer', { deliveryMethod: 'shipping' })
+      needsShippingQuote('transition/customer-make-offer', { deliveryMethod: 'shipping' })
     ).toBe(false);
   });
 

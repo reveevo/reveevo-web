@@ -82,9 +82,7 @@ const Offer = props => {
     transactionFieldsComponent,
   } = props;
 
-  // Offers of this transaction, or the counter offer that this order was paid for
-  const { offers: metadataOffers, counterOfferOf } = transaction?.attributes?.metadata || {};
-  const purchaseOffers = metadataOffers || (counterOfferOf ? [counterOfferOf] : null);
+  const purchaseOffers = transaction?.attributes?.metadata?.offers;
   if (!isNegotiationProcess && isPurchaseProcess && purchaseOffers?.length > 0) {
     return <PurchaseOffer {...props} offers={purchaseOffers} />;
   } else if (!isNegotiationProcess) {

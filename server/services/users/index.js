@@ -5,8 +5,9 @@ const EMAIL_NOT_VERIFIED = 'email-not-verified';
 const VERIFIED_EMAIL_TRANSITIONS = [
   'transition/request-payment',
   'transition/request-payment-after-inquiry',
-  'transition/request-payment-for-counter-offer',
+  'transition/request-payment-after-offer',
   'transition/customer-make-offer',
+  'transition/customer-make-counter-offer',
 ];
 
 /**

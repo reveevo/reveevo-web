@@ -9,10 +9,10 @@ import {
  * Get state data against product process for TransactionPage's UI.
  * I.e. info about showing action buttons, current state etc.
  *
- * Reveevo (default-purchase release 3):
- * - The provider confirms every order (and the pick-up / collection day) in ConfirmOrderModal.
- * - Offers hold the customer's card. A counter offer is paid (or answered with a new offer) in a
- *   new transaction.
+ * Reveevo (default-purchase release 4):
+ * - The provider confirms every paid order (and the pick-up / collection day) in ConfirmOrderModal.
+ * - Offers are negotiated in one transaction. Once the price is agreed, the customer pays it
+ *   (like after an inquiry), and the provider then confirms the order.
  * - The hand-over is confirmed with the customer's PIN (see HandoverInfo).
  *
  * @param {*} txInfo detials about transaction
@@ -25,8 +25,6 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
     nextTransitions,
     onOpenConfirmOrderModal,
     onOpenMakeCounterOfferModal,
-    onOpenMakeNewOfferModal,
-    onPayCounterOffer,
   } = txInfo;
   const isProviderBanned = transaction?.provider?.attributes?.banned;
   const _ = CONDITIONAL_RESOLVER_WILDCARD;
@@ -41,6 +39,18 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
   } = processInfo;
 
   const sharedStateData = { processName, processState, showDetailCardHeadings: true };
+
+  // Both parties can keep countering, but the loop is capped to keep the history readable.
+  const counterOfferConditions = role => [
+    {
+      type: 'maxTransitions',
+      action: 'disable',
+      max: 50,
+      disabledReason: {
+        translationKey: `TransactionPage.${processName}.${role}.counterOffer.disabled.maxRequests`,
+      },
+    },
+  ];
 
   return new ConditionalResolver([processState, transactionRole])
     .cond([states.PENDING_CONFIRMATION, PROVIDER], () => {
@@ -62,12 +72,11 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
         ...sharedStateData,
         showExtraInfo: true,
         showActionButtons: true,
-        primaryButtonProps: actionButtonProps(transitions.PROVIDER_ACCEPT_OFFER, PROVIDER, {
-          onAction: onOpenConfirmOrderModal,
-        }),
+        primaryButtonProps: actionButtonProps(transitions.PROVIDER_ACCEPT_OFFER, PROVIDER),
         secondaryButtonProps: actionButtonProps(transitions.PROVIDER_DECLINE_OFFER, PROVIDER),
         tertiaryButtonProps: actionButtonProps(transitions.PROVIDER_MAKE_COUNTER_OFFER, PROVIDER, {
           onAction: onOpenMakeCounterOfferModal,
+          conditions: counterOfferConditions(PROVIDER),
         }),
       };
     })
@@ -79,26 +88,40 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
         secondaryButtonProps: actionButtonProps(transitions.CUSTOMER_WITHDRAW_OFFER, CUSTOMER),
       };
     })
-    .cond([states.COUNTER_OFFERED, CUSTOMER], () => {
-      // Accepting the counter offer = paying it at once on CheckoutPage (new transaction)
+    .cond([states.COUNTER_OFFER_PENDING, CUSTOMER], () => {
       return {
         ...sharedStateData,
         showExtraInfo: true,
         showActionButtons: !isProviderBanned,
-        primaryButtonProps: actionButtonProps(transitions.CUSTOMER_ACCEPT_COUNTER_OFFER, CUSTOMER, {
-          onAction: onPayCounterOffer,
-        }),
+        primaryButtonProps: actionButtonProps(transitions.CUSTOMER_ACCEPT_COUNTER_OFFER, CUSTOMER),
         secondaryButtonProps: actionButtonProps(
           transitions.CUSTOMER_DECLINE_COUNTER_OFFER,
           CUSTOMER
         ),
         tertiaryButtonProps: actionButtonProps(transitions.CUSTOMER_MAKE_COUNTER_OFFER, CUSTOMER, {
-          onAction: onOpenMakeNewOfferModal,
+          onAction: onOpenMakeCounterOfferModal,
+          conditions: counterOfferConditions(CUSTOMER),
         }),
       };
     })
-    .cond([states.COUNTER_OFFERED, PROVIDER], () => {
-      return { ...sharedStateData, showExtraInfo: true };
+    .cond([states.OFFER_ACCEPTED, CUSTOMER], () => {
+      // Like after an inquiry, the customer chooses the delivery method on OrderPanel
+      // and pays the accepted offer on CheckoutPage.
+      const transitionNames = Array.isArray(nextTransitions)
+        ? nextTransitions.map(t => t.attributes.name)
+        : [];
+      const hasCorrectNextTransition = transitionNames.includes(
+        transitions.REQUEST_PAYMENT_AFTER_OFFER
+      );
+      const showOrderPanel = !isProviderBanned && hasCorrectNextTransition;
+      return {
+        ...sharedStateData,
+        showOrderPanel,
+        // OrderPanel shows the breakdown with the chosen delivery method.
+        // The offer's own line items (without delivery) would be a confusing duplicate.
+        showBreakDown: !showOrderPanel,
+        showExtraInfo: true,
+      };
     })
     .cond([states.INQUIRY, CUSTOMER], () => {
       const transitionNames = Array.isArray(nextTransitions)

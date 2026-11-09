@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { types as sdkTypes, createImageVariantConfig } from '../../util/sdkLoader';
 import { storableError } from '../../util/errors';
 import { addMarketplaceEntities } from '../../ducks/marketplaceData.duck';
-import { transactionLineItems } from '../../util/api';
+import { initiatePrivileged, transactionLineItems } from '../../util/api';
 import * as log from '../../util/log';
 import { denormalisedResponseEntities } from '../../util/data';
 import {
@@ -315,6 +315,73 @@ export const sendInquiry = (listing, message) => (dispatch, getState, sdk) => {
   return dispatch(sendInquiryThunk({ listing, message })).unwrap();
 };
 
+////////////////////
+// Make an offer //
+////////////////////
+
+// Customer makes an offer (a price per item) on a product listing (default-purchase process).
+// The server calculates line items from the offer and saves it to transaction's metadata.
+const makeOfferPayloadCreator = (
+  { listing, offer, quantity, message },
+  { dispatch, rejectWithValue, extra: sdk }
+) => {
+  const { transactionProcessAlias: processAlias, unitType } = listing?.attributes?.publicData || {};
+  if (!processAlias) {
+    const error = new Error('No transaction process attached to listing');
+    log.error(error, 'listing-process-missing', { listingId: listing?.id?.uuid });
+    return rejectWithValue(storableError(error));
+  }
+
+  const [processName] = processAlias.split('/');
+  const transitions = getProcess(processName)?.transitions;
+
+  const bodyParams = {
+    transition: transitions.CUSTOMER_MAKE_OFFER,
+    processAlias,
+    params: {
+      listingId: listing.id,
+      protectedData: { unitType },
+    },
+  };
+  // Note: quantity is not a param of this transition (no stock is reserved yet).
+  // The server saves it together with the offer and uses it when the offer gets paid.
+  // The delivery method is chosen later, when the customer pays the accepted offer.
+  const orderData = {
+    actor: 'customer',
+    offerInSubunits: offer.amount,
+    currency: offer.currency,
+    stockReservationQuantity: quantity,
+  };
+
+  return initiatePrivileged({ isSpeculative: false, orderData, bodyParams, queryParams: {} })
+    .then(response => {
+      const transactionId = response.data.data.id;
+      dispatch(setCurrentUserHasOrders());
+
+      // The message is optional and failing to send it should not hide the created offer.
+      return message
+        ? sdk.messages
+            .send({ transactionId, content: message })
+            .then(() => transactionId)
+            .catch(e => {
+              log.error(e, 'make-offer-message-failed', { transactionId: transactionId.uuid });
+              return transactionId;
+            })
+        : transactionId;
+    })
+    .catch(e => {
+      log.error(e, 'make-offer-failed', { listingId: listing.id.uuid });
+      return rejectWithValue(storableError(e));
+    });
+};
+
+export const makeOfferThunk = createAsyncThunk('ListingPage/makeOffer', makeOfferPayloadCreator);
+
+// Backward compatible wrapper for the thunk
+export const makeOffer = params => dispatch => {
+  return dispatch(makeOfferThunk(params)).unwrap();
+};
+
 // Helper function for loadData call.
 // Note: listing could be ownListing entity too
 const fetchMonthlyTimeSlots = (dispatch, listing) => {
@@ -441,6 +508,8 @@ const initialState = {
   sendInquiryInProgress: false,
   sendInquiryError: null,
   inquiryModalOpenForListingId: null,
+  makeOfferInProgress: false,
+  makeOfferError: null,
 };
 
 const listingPageSlice = createSlice({
@@ -536,6 +605,17 @@ const listingPageSlice = createSlice({
           state.monthlyTimeSlots[monthId].fetchTimeSlotsInProgress = false;
           state.monthlyTimeSlots[monthId].fetchTimeSlotsError = action.payload;
         }
+      })
+      .addCase(makeOfferThunk.pending, state => {
+        state.makeOfferInProgress = true;
+        state.makeOfferError = null;
+      })
+      .addCase(makeOfferThunk.fulfilled, state => {
+        state.makeOfferInProgress = false;
+      })
+      .addCase(makeOfferThunk.rejected, (state, action) => {
+        state.makeOfferInProgress = false;
+        state.makeOfferError = action.payload;
       })
       .addCase(sendInquiryThunk.pending, state => {
         state.sendInquiryInProgress = true;

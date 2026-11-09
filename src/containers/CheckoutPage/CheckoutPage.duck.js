@@ -28,18 +28,15 @@ const initiateOrderPayloadCreator = (
     quantity,
     bookingDates,
     expectedPayinTotal,
-    offerOrderData,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
   const bookingParamsMaybe = bookingDates || {};
 
   // Parameters only for client app's server
-  // (offerOrderData: the offered price or the counter offer to pay - see server/services/offers)
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(expectedPayinTotal ? { expectedPayinTotal } : {}),
-    ...(offerOrderData || {}),
   };
 
   // Parameters for Marketplace API
@@ -310,7 +307,6 @@ const speculateTransactionPayloadCreator = (
     priceVariantName,
     quantity,
     bookingDates,
-    offerOrderData,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -320,7 +316,6 @@ const speculateTransactionPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
-    ...(offerOrderData || {}),
   };
 
   // Parameters for Marketplace API

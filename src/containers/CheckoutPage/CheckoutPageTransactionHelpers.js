@@ -28,73 +28,48 @@ export const getTransactionTypeData = (listingType, unitTypeInPublicData, config
 };
 
 /**
- * Offer details of the order (default-purchase process):
- * - offerInSubunits: the customer makes an offer (their card is held for the offered price)
- * - previousOfferTransactionId: the offer follows the provider's counter offer
- * - counterOfferTransactionId: the customer pays the provider's counter offer
- *
- * @param {Object} orderData pageData.orderData
- * @returns {Object|null} offer order data for the server, or null
- */
-export const getOfferOrderData = orderData => {
-  const { offerInSubunits, previousOfferTransactionId, counterOfferTransactionId } =
-    orderData || {};
-  return counterOfferTransactionId
-    ? { actor: 'customer', counterOfferTransactionId }
-    : offerInSubunits
-    ? {
-        actor: 'customer',
-        offerInSubunits,
-        ...(previousOfferTransactionId ? { previousOfferTransactionId } : {}),
-      }
-    : null;
-};
-
-/**
- * Returns the transition that requests payment, based on the order and the existing transaction:
- * - offer (default-purchase):                customer-make-offer (card is held for the offer)
- * - counter offer (default-purchase):        request-payment-for-counter-offer
+ * Returns the transition that requests payment, based on the state of the existing transaction:
  * - inquiry (any payment process):           request-payment-after-inquiry
  * - offer-pending (default-negotiation):     request-payment-to-accept-offer
+ * - offer-accepted (default-purchase):       request-payment-after-offer
  * - no transaction yet:                      request-payment
  *
  * @param {Object} tx existing transaction (or null)
  * @param {Object} process transaction process
  * @param {string} processAlias e.g. 'default-purchase/release-1'
- * @param {Object} [orderData] pageData.orderData
  * @returns {string} transition name
  */
-export const getRequestPaymentTransition = (tx, process, processAlias, orderData) => {
+export const getRequestPaymentTransition = (tx, process, processAlias) => {
   const processName = resolveLatestProcessName(processAlias?.split('/')[0]);
   const txState = tx?.attributes?.state;
-  const isPurchase = processName === PURCHASE_PROCESS_NAME;
   const isOfferPendingInNegotiationProcess =
     processName === NEGOTIATION_PROCESS_NAME && txState === `state/${process.states.OFFER_PENDING}`;
+  const isOfferAcceptedInPurchaseProcess =
+    processName === PURCHASE_PROCESS_NAME && txState === `state/${process.states.OFFER_ACCEPTED}`;
 
-  return isPurchase && orderData?.counterOfferTransactionId
-    ? process.transitions.REQUEST_PAYMENT_FOR_COUNTER_OFFER
-    : isPurchase && orderData?.offerInSubunits
-    ? process.transitions.CUSTOMER_MAKE_OFFER
-    : tx?.attributes?.lastTransition === process.transitions.INQUIRE
+  return tx?.attributes?.lastTransition === process.transitions.INQUIRE
     ? process.transitions.REQUEST_PAYMENT_AFTER_INQUIRY
     : isOfferPendingInNegotiationProcess
     ? process.transitions.REQUEST_PAYMENT_TO_ACCEPT_OFFER
+    : isOfferAcceptedInPurchaseProcess
+    ? process.transitions.REQUEST_PAYMENT_AFTER_OFFER
     : process.transitions.REQUEST_PAYMENT;
 };
 
 /**
- * Returns the transition that confirms the payment after Stripe has confirmed the card.
- * Offers have their own confirmation transition (the card is only held until the offer is
- * accepted).
+ * Checks if the existing transaction's line items can be used for the order breakdown.
+ * An accepted purchase offer has line items, but they don't include the delivery method
+ * that is chosen just before checkout. In that case, the speculated transaction is used.
  *
- * @param {Object} process transaction process
- * @param {string} requestTransition the transition that requested the payment
- * @returns {string} transition name
+ * @param {Object} tx existing transaction (or null)
+ * @returns {boolean}
  */
-export const getConfirmPaymentTransition = (process, requestTransition) =>
-  requestTransition === process.transitions.CUSTOMER_MAKE_OFFER
-    ? process.transitions.CONFIRM_OFFER_PAYMENT
-    : process.transitions.CONFIRM_PAYMENT;
+export const hasFinalLineItems = tx => {
+  const processName = resolveLatestProcessName(tx?.attributes?.processName);
+  const isAcceptedPurchaseOffer =
+    processName === PURCHASE_PROCESS_NAME && tx?.attributes?.state === 'state/offer-accepted';
+  return tx?.attributes?.lineItems?.length > 0 && !isAcceptedPurchaseOffer;
+};
 
 /**
  * This just makes it easier to transfrom bookingDates object if needed
@@ -275,12 +250,7 @@ export const processCheckoutWithPayment = (orderParams, extraPaymentParams) => {
     // fnParams should be { listingId, deliveryMethod?, quantity?, bookingDates?, paymentMethod?.setupPaymentMethodForSaving?, protectedData }
     const hasPaymentIntents = storedTx.attributes.protectedData?.stripePaymentIntents;
 
-    const requestTransition = getRequestPaymentTransition(
-      storedTx,
-      process,
-      processAlias,
-      pageData?.orderData
-    );
+    const requestTransition = getRequestPaymentTransition(storedTx, process, processAlias);
     const isPrivileged = process.isPrivileged(requestTransition);
 
     // If paymentIntent exists, order has been initiated previously.
@@ -349,13 +319,7 @@ export const processCheckoutWithPayment = (orderParams, extraPaymentParams) => {
     // Remember the created PaymentIntent for step 5
     createdPaymentIntent = fnParams.paymentIntent;
     const transactionId = fnParams.transactionId;
-    const requestTransition = getRequestPaymentTransition(
-      storedTx,
-      process,
-      processAlias,
-      pageData?.orderData
-    );
-    const transitionName = getConfirmPaymentTransition(process, requestTransition);
+    const transitionName = process.transitions.CONFIRM_PAYMENT;
     const isTransitionedAlready = storedTx?.attributes?.lastTransition === transitionName;
     const orderPromise = isTransitionedAlready
       ? Promise.resolve(storedTx)

@@ -9,7 +9,6 @@ import { useRouteConfiguration } from '../../context/routeConfigurationContext';
 import { FormattedMessage, useIntl } from '../../util/reactIntl';
 import { createResourceLocatorString, findRouteByRouteName } from '../../util/routes';
 import {
-  LINE_ITEM_ITEM,
   LINE_ITEM_OFFER,
   LINE_ITEM_REQUEST,
   LISTING_UNIT_TYPES,
@@ -56,7 +55,6 @@ import {
   OrderBreakdown,
   OrderPanel,
   LayoutSingleColumn,
-  MakeOfferModal,
 } from '../../components';
 
 import TopbarContainer from '../../containers/TopbarContainer/TopbarContainer';
@@ -343,11 +341,10 @@ export const TransactionPageComponent = props => {
   const [isRequestChangesModalOpen, setRequestChangesModalOpen] = useState(false);
   const [changeRequestSubmitted, setChangeRequestSubmitted] = useState(false);
   const [isMakeCounterOfferModalOpen, setMakeCounterOfferModalOpen] = useState(false);
-  // Reveevo product orders: provider confirms the order, hand-over PIN, customer's new offer
+  // Reveevo product orders: provider confirms the order, hand-over PIN
   const [isConfirmOrderModalOpen, setConfirmOrderModalOpen] = useState(false);
   const [isHandoverPinModalOpen, setHandoverPinModalOpen] = useState(false);
   const [handoverState, setHandoverState] = useState({ inProgress: false, error: null });
-  const [isMakeNewOfferModalOpen, setMakeNewOfferModalOpen] = useState(false);
   const [counterOfferSubmitted, setCounterOfferSubmitted] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -538,50 +535,7 @@ export const TransactionPageComponent = props => {
     setMakeCounterOfferModalOpen(true);
   };
 
-  // Product orders (default-purchase): quantity and delivery method of this transaction
-  const getPurchaseOrderData = () => {
-    const itemLineItem = transaction?.attributes?.lineItems?.find(
-      item => item.code === LINE_ITEM_ITEM && !item.reversal
-    );
-    const quantity = itemLineItem?.quantity?.toNumber?.() || 1;
-    const deliveryMethod = transaction?.attributes?.protectedData?.deliveryMethod;
-    return { quantity, ...(deliveryMethod ? { deliveryMethod } : {}) };
-  };
-
-  // The customer accepts the provider's counter offer by paying it on CheckoutPage.
-  // This creates a new transaction (the card hold of this offer was released).
-  const onPayCounterOffer = () => {
-    redirectToCheckoutPageWithInitialValues(
-      {
-        listing,
-        orderData: { ...getPurchaseOrderData(), counterOfferTransactionId: transaction.id.uuid },
-        confirmPaymentError: null,
-      },
-      listing
-    );
-  };
-
-  // The customer answers the provider's counter offer with a new offer (a new transaction).
-  const onMakeNewOffer = values => {
-    const { offer, quantity, deliveryMethod, message } = values;
-    setMakeNewOfferModalOpen(false);
-    redirectToCheckoutPageWithInitialValues(
-      {
-        listing,
-        orderData: {
-          quantity,
-          ...(deliveryMethod ? { deliveryMethod } : {}),
-          offerInSubunits: offer.amount,
-          previousOfferTransactionId: transaction.id.uuid,
-          ...(message ? { offerMessage: message } : {}),
-        },
-        confirmPaymentError: null,
-      },
-      listing
-    );
-  };
-
-  // The provider confirms the order (or accepts the offer) with the pick-up / collection day
+  // The provider confirms the order with the pick-up / collection day
   // For direct pick up, the exact pickup address (listing's private data) and the provider's
   // contact details are shared with the customer at the same time.
   const getPickupAddressMaybe = () => {
@@ -602,10 +556,7 @@ export const TransactionPageComponent = props => {
 
   const onConfirmOrder = values => {
     const { date, timeWindow } = values;
-    const isOffer = process?.getState(transaction) === process?.states?.OFFER_PENDING;
-    const transitionName = isOffer
-      ? process.transitions.PROVIDER_ACCEPT_OFFER
-      : process.transitions.PROVIDER_CONFIRM_ORDER;
+    const transitionName = process.transitions.PROVIDER_CONFIRM_ORDER;
     getPickupAddressMaybe()
       .then(pickupAddressMaybe =>
         onTransition(transaction.id, transitionName, {
@@ -860,8 +811,6 @@ export const TransactionPageComponent = props => {
           onOpenRequestChangesModal,
           onOpenMakeCounterOfferModal,
           onOpenConfirmOrderModal: () => setConfirmOrderModalOpen(true),
-          onOpenMakeNewOfferModal: () => setMakeNewOfferModalOpen(true),
-          onPayCounterOffer,
           onCheckoutRedirect: handleSubmitOrderRequest,
           onMakeOfferRedirect: onMakeOffer,
           intl,
@@ -952,6 +901,25 @@ export const TransactionPageComponent = props => {
 
   const actionButtonContainer = isMobile ? 'mobile' : 'desktop';
 
+  // Accepted purchase offer: the customer chooses the delivery method on OrderPanel (like after
+  // an inquiry). The offered quantity is fixed and the server prices line items with the offer.
+  const isAcceptedPurchaseOffer =
+    processName === PURCHASE_PROCESS_NAME &&
+    stateData.processState === process?.states?.OFFER_ACCEPTED;
+  const acceptedOfferQuantity = isAcceptedPurchaseOffer
+    ? transaction?.attributes?.metadata?.offerOrderData?.stockReservationQuantity
+    : null;
+  const acceptedOfferOrderPanelMaybe = isAcceptedPurchaseOffer
+    ? {
+        hidePrice: true,
+        fixedQuantity: acceptedOfferQuantity,
+        onFetchTransactionLineItems: ({ orderData, ...rest }) =>
+          restOfProps.onFetchTransactionLineItems({
+            orderData: { ...orderData, offerTransactionId: transaction.id },
+            ...rest,
+          }),
+      }
+    : {};
   // TransactionPanel is presentational component
   // that currently handles showing everything inside layout's main view area.
   const panel = isDataAvailable ? (
@@ -1122,6 +1090,7 @@ export const TransactionPageComponent = props => {
           marketplaceCurrency={config.currency}
           dayCountAvailableForBooking={config.stripe.dayCountAvailableForBooking}
           marketplaceName={config.marketplaceName}
+          {...acceptedOfferOrderPanelMaybe}
         />
       }
     />
@@ -1278,12 +1247,8 @@ export const TransactionPageComponent = props => {
               onClose={() => setConfirmOrderModalOpen(false)}
               onManageDisableScrolling={onManageDisableScrolling}
               isShipping={transaction?.attributes?.protectedData?.deliveryMethod === 'shipping'}
-              isOffer={stateData.processState === process.states.OFFER_PENDING}
               onSubmit={onConfirmOrder}
-              inProgress={[
-                process.transitions.PROVIDER_CONFIRM_ORDER,
-                process.transitions.PROVIDER_ACCEPT_OFFER,
-              ].includes(transitionInProgress)}
+              inProgress={transitionInProgress === process.transitions.PROVIDER_CONFIRM_ORDER}
               confirmError={transitionError}
             />
             <HandoverPinModal
@@ -1294,18 +1259,6 @@ export const TransactionPageComponent = props => {
               onSubmit={onConfirmHandover}
               inProgress={handoverState.inProgress}
               handoverError={handoverState.error}
-            />
-            <MakeOfferModal
-              id="TransactionPage.makeNewOfferModal"
-              isOpen={isMakeNewOfferModalOpen}
-              onClose={() => setMakeNewOfferModalOpen(false)}
-              onManageDisableScrolling={onManageDisableScrolling}
-              price={listing?.attributes?.price}
-              quantity={getPurchaseOrderData().quantity}
-              deliveryMethod={getPurchaseOrderData().deliveryMethod}
-              pickupEnabled={listing?.attributes?.publicData?.pickupEnabled}
-              shippingEnabled={listing?.attributes?.publicData?.shippingEnabled}
-              onSubmit={onMakeNewOffer}
             />
           </>
         ) : null}

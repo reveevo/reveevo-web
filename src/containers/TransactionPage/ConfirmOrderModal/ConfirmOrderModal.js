@@ -39,7 +39,6 @@ const getDateOptions = intl =>
  * @param {Function} props.onClose
  * @param {Function} props.onManageDisableScrolling
  * @param {boolean} props.isShipping
- * @param {boolean} props.isOffer whether the provider accepts an offer
  * @param {Function} props.onSubmit called with { date, timeWindow }
  * @param {boolean} [props.inProgress]
  * @param {propTypes.error} [props.confirmError]
@@ -53,7 +52,6 @@ const ConfirmOrderModal = props => {
     onClose,
     onManageDisableScrolling,
     isShipping,
-    isOffer,
     onSubmit,
     inProgress,
     confirmError,
@@ -69,9 +67,7 @@ const ConfirmOrderModal = props => {
       usePortal
     >
       <Heading as="h2" rootClassName={css.heading}>
-        <FormattedMessage
-          id={isOffer ? 'ConfirmOrderModal.titleOffer' : 'ConfirmOrderModal.title'}
-        />
+        <FormattedMessage id="ConfirmOrderModal.title" />
       </Heading>
       <p className={css.description}>
         <FormattedMessage id={`ConfirmOrderModal.description.${kind}`} />

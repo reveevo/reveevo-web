@@ -1,12 +1,12 @@
 /**
  * Transaction process graph for product orders:
- *   - default-purchase (Reveevo release 3)
+ *   - default-purchase (Reveevo release 4)
  *
  * Direct order: the customer pays (the card is held), the provider confirms the sale and picks the
  * pick-up / collection day (the payment is captured), or declines (the hold is released).
- * Offer: the customer's card is held for the offered price. The provider accepts (= confirms the
- * sale), declines, or makes a counter offer (the hold is released). The customer pays a counter
- * offer at once in a new transaction, or makes a new offer (also a new transaction).
+ * Offer: the customer offers a price, the provider accepts, declines or makes a counter offer, and
+ * the customer can answer a counter offer the same way. No payment is taken while negotiating:
+ * once the price is agreed, the customer pays it (then the order goes on like a direct order).
  * Hand-over: the customer's PIN is entered by the provider (pick up) or Reveevo's courier
  * (shipping), and the server completes the order with an operator transition.
  */
@@ -32,9 +32,6 @@ export const transitions = {
   INQUIRE: 'transition/inquire',
   REQUEST_PAYMENT_AFTER_INQUIRY: 'transition/request-payment-after-inquiry',
 
-  // The customer pays the provider's counter offer (in a new transaction)
-  REQUEST_PAYMENT_FOR_COUNTER_OFFER: 'transition/request-payment-for-counter-offer',
-
   // Stripe SDK might need to ask 3D security from customer, in a separate front-end step.
   // Therefore we need to make another transition to Marketplace API,
   // to tell that the payment is confirmed. The card is held until the provider confirms.
@@ -50,22 +47,24 @@ export const transitions = {
   PROVIDER_DECLINE_ORDER: 'transition/provider-decline-order',
   EXPIRE_CONFIRMATION: 'transition/expire-confirmation',
 
-  // Offers: the customer's card is held for the offered price.
+  // A customer can make an offer (a price per item) instead of buying with the listed price.
+  // Provider can accept, decline, or make a counter offer. Customer can then accept, decline,
+  // or make a new counter offer. Pending offers expire automatically.
   CUSTOMER_MAKE_OFFER: 'transition/customer-make-offer',
-  CONFIRM_OFFER_PAYMENT: 'transition/confirm-offer-payment',
-  EXPIRE_OFFER_PAYMENT: 'transition/expire-offer-payment',
   PROVIDER_ACCEPT_OFFER: 'transition/provider-accept-offer',
   PROVIDER_DECLINE_OFFER: 'transition/provider-decline-offer',
+  PROVIDER_MAKE_COUNTER_OFFER: 'transition/provider-make-counter-offer',
   CUSTOMER_WITHDRAW_OFFER: 'transition/customer-withdraw-offer',
   EXPIRE_OFFER: 'transition/expire-offer',
-
-  // The provider's counter offer releases the hold. The customer continues in a new transaction
-  // (pays the counter offer or makes a new offer), and this one is closed.
-  PROVIDER_MAKE_COUNTER_OFFER: 'transition/provider-make-counter-offer',
   CUSTOMER_ACCEPT_COUNTER_OFFER: 'transition/customer-accept-counter-offer',
-  CUSTOMER_MAKE_COUNTER_OFFER: 'transition/customer-make-counter-offer',
   CUSTOMER_DECLINE_COUNTER_OFFER: 'transition/customer-decline-counter-offer',
+  CUSTOMER_MAKE_COUNTER_OFFER: 'transition/customer-make-counter-offer',
   EXPIRE_COUNTER_OFFER: 'transition/expire-counter-offer',
+
+  // When an offer is accepted, the customer pays the agreed price.
+  // If that does not happen in time, the accepted offer expires.
+  REQUEST_PAYMENT_AFTER_OFFER: 'transition/request-payment-after-offer',
+  EXPIRE_ACCEPTED_OFFER: 'transition/expire-accepted-offer',
 
   // Hand-over: confirmed on the server with the customer's PIN (operator transitions).
   // For shipped orders, the operator can mark the item collected from the provider first.
@@ -138,15 +137,12 @@ export const states = {
   PAYMENT_EXPIRED: 'payment-expired',
   PENDING_CONFIRMATION: 'pending-confirmation',
   DECLINED: 'declined',
-  OFFER_PAYMENT_PENDING: 'offer-payment-pending',
-  OFFER_PAYMENT_EXPIRED: 'offer-payment-expired',
   OFFER_PENDING: 'offer-pending',
+  COUNTER_OFFER_PENDING: 'counter-offer-pending',
+  OFFER_ACCEPTED: 'offer-accepted',
   OFFER_DECLINED: 'offer-declined',
   OFFER_WITHDRAWN: 'offer-withdrawn',
   OFFER_EXPIRED: 'offer-expired',
-  COUNTER_OFFERED: 'counter-offered',
-  COUNTER_OFFER_ACCEPTED: 'counter-offer-accepted',
-  CUSTOMER_COUNTERED: 'customer-countered',
   PURCHASED: 'purchased',
   COLLECTED: 'collected',
   DELIVERED: 'delivered',
@@ -183,8 +179,7 @@ export const graph = {
       on: {
         [transitions.INQUIRE]: states.INQUIRY,
         [transitions.REQUEST_PAYMENT]: states.PENDING_PAYMENT,
-        [transitions.REQUEST_PAYMENT_FOR_COUNTER_OFFER]: states.PENDING_PAYMENT,
-        [transitions.CUSTOMER_MAKE_OFFER]: states.OFFER_PAYMENT_PENDING,
+        [transitions.CUSTOMER_MAKE_OFFER]: states.OFFER_PENDING,
       },
     },
     [states.INQUIRY]: {
@@ -210,35 +205,32 @@ export const graph = {
     },
     [states.DECLINED]: {},
 
-    [states.OFFER_PAYMENT_PENDING]: {
-      on: {
-        [transitions.CONFIRM_OFFER_PAYMENT]: states.OFFER_PENDING,
-        [transitions.EXPIRE_OFFER_PAYMENT]: states.OFFER_PAYMENT_EXPIRED,
-      },
-    },
-    [states.OFFER_PAYMENT_EXPIRED]: {},
     [states.OFFER_PENDING]: {
       on: {
-        [transitions.PROVIDER_ACCEPT_OFFER]: states.PURCHASED,
+        [transitions.PROVIDER_ACCEPT_OFFER]: states.OFFER_ACCEPTED,
         [transitions.PROVIDER_DECLINE_OFFER]: states.OFFER_DECLINED,
+        [transitions.PROVIDER_MAKE_COUNTER_OFFER]: states.COUNTER_OFFER_PENDING,
         [transitions.CUSTOMER_WITHDRAW_OFFER]: states.OFFER_WITHDRAWN,
         [transitions.EXPIRE_OFFER]: states.OFFER_EXPIRED,
-        [transitions.PROVIDER_MAKE_COUNTER_OFFER]: states.COUNTER_OFFERED,
       },
     },
-    [states.COUNTER_OFFERED]: {
+    [states.COUNTER_OFFER_PENDING]: {
       on: {
-        [transitions.CUSTOMER_ACCEPT_COUNTER_OFFER]: states.COUNTER_OFFER_ACCEPTED,
-        [transitions.CUSTOMER_MAKE_COUNTER_OFFER]: states.CUSTOMER_COUNTERED,
+        [transitions.CUSTOMER_ACCEPT_COUNTER_OFFER]: states.OFFER_ACCEPTED,
         [transitions.CUSTOMER_DECLINE_COUNTER_OFFER]: states.OFFER_DECLINED,
+        [transitions.CUSTOMER_MAKE_COUNTER_OFFER]: states.OFFER_PENDING,
         [transitions.EXPIRE_COUNTER_OFFER]: states.OFFER_EXPIRED,
+      },
+    },
+    [states.OFFER_ACCEPTED]: {
+      on: {
+        [transitions.REQUEST_PAYMENT_AFTER_OFFER]: states.PENDING_PAYMENT,
+        [transitions.EXPIRE_ACCEPTED_OFFER]: states.OFFER_EXPIRED,
       },
     },
     [states.OFFER_DECLINED]: {},
     [states.OFFER_WITHDRAWN]: {},
     [states.OFFER_EXPIRED]: {},
-    [states.COUNTER_OFFER_ACCEPTED]: {},
-    [states.CUSTOMER_COUNTERED]: {},
 
     [states.PURCHASED]: {
       on: {
@@ -315,16 +307,17 @@ export const isRelevantPastTransition = transition => {
     transitions.PROVIDER_CONFIRM_ORDER,
     transitions.PROVIDER_DECLINE_ORDER,
     transitions.EXPIRE_CONFIRMATION,
-    transitions.CONFIRM_OFFER_PAYMENT,
+    transitions.CUSTOMER_MAKE_OFFER,
     transitions.PROVIDER_ACCEPT_OFFER,
     transitions.PROVIDER_DECLINE_OFFER,
+    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CUSTOMER_WITHDRAW_OFFER,
     transitions.EXPIRE_OFFER,
-    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CUSTOMER_ACCEPT_COUNTER_OFFER,
-    transitions.CUSTOMER_MAKE_COUNTER_OFFER,
     transitions.CUSTOMER_DECLINE_COUNTER_OFFER,
+    transitions.CUSTOMER_MAKE_COUNTER_OFFER,
     transitions.EXPIRE_COUNTER_OFFER,
+    transitions.EXPIRE_ACCEPTED_OFFER,
     transitions.OPERATOR_MARK_COLLECTED,
     transitions.OPERATOR_CONFIRM_HANDOVER,
     transitions.OPERATOR_CONFIRM_DELIVERY,
@@ -362,9 +355,10 @@ export const isPrivileged = transition => {
   return [
     transitions.REQUEST_PAYMENT,
     transitions.REQUEST_PAYMENT_AFTER_INQUIRY,
-    transitions.REQUEST_PAYMENT_FOR_COUNTER_OFFER,
+    transitions.REQUEST_PAYMENT_AFTER_OFFER,
     transitions.CUSTOMER_MAKE_OFFER,
     transitions.PROVIDER_MAKE_COUNTER_OFFER,
+    transitions.CUSTOMER_MAKE_COUNTER_OFFER,
   ].includes(transition);
 };
 
@@ -390,11 +384,6 @@ export const isRefunded = transition => {
     transitions.EXPIRE_PAYMENT,
     transitions.PROVIDER_DECLINE_ORDER,
     transitions.EXPIRE_CONFIRMATION,
-    transitions.EXPIRE_OFFER_PAYMENT,
-    transitions.PROVIDER_DECLINE_OFFER,
-    transitions.CUSTOMER_WITHDRAW_OFFER,
-    transitions.EXPIRE_OFFER,
-    transitions.PROVIDER_MAKE_COUNTER_OFFER,
     transitions.CANCEL,
     transitions.AUTO_CANCEL,
     transitions.OPERATOR_CANCEL_FROM_COLLECTED,
@@ -410,7 +399,7 @@ export const statesNeedingProviderAttention = [
   states.PURCHASED,
 ];
 
-export const statesNeedingCustomerAttention = [states.COUNTER_OFFERED];
+export const statesNeedingCustomerAttention = [states.COUNTER_OFFER_PENDING, states.OFFER_ACCEPTED];
 
 /////////////////////////////////////////////////////////////////////
 // Offers                                                          //
@@ -419,7 +408,11 @@ export const statesNeedingCustomerAttention = [states.COUNTER_OFFERED];
 /////////////////////////////////////////////////////////////////////
 
 // Transitions that set a new offer (i.e. add an entry to metadata.offers)
-const offerTransitions = [transitions.CUSTOMER_MAKE_OFFER, transitions.PROVIDER_MAKE_COUNTER_OFFER];
+const offerTransitions = [
+  transitions.CUSTOMER_MAKE_OFFER,
+  transitions.PROVIDER_MAKE_COUNTER_OFFER,
+  transitions.CUSTOMER_MAKE_COUNTER_OFFER,
+];
 
 /**
  * Checks if the offers array is valid against the (past) transitions array.
@@ -444,14 +437,13 @@ export const isValidNegotiationOffersArray = (transitions, offers) => {
 
 /**
  * Checks if the state is one where an offer is waiting for a response.
- * Note: each customer offer is its own transaction (the customer's card is held for it).
  *
  * @param {string} state e.g. 'state/offer-pending'
  * @returns {boolean}
  */
 export const isNegotiationState = state => {
   const unprefixedState = state?.indexOf('/') > -1 ? state.split('/')[1] : state;
-  return [states.OFFER_PENDING, states.COUNTER_OFFERED].includes(unprefixedState);
+  return [states.OFFER_PENDING, states.COUNTER_OFFER_PENDING].includes(unprefixedState);
 };
 
 /**

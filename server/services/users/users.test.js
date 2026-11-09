@@ -10,6 +10,7 @@ describe('email verification', () => {
   it('is needed for payments and offers', () => {
     expect(requiresVerifiedEmail('transition/request-payment')).toBe(true);
     expect(requiresVerifiedEmail('transition/customer-make-offer')).toBe(true);
+    expect(requiresVerifiedEmail('transition/request-payment-after-offer')).toBe(true);
     expect(requiresVerifiedEmail('transition/inquire')).toBe(false);
   });
 

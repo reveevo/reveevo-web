@@ -51,7 +51,7 @@ import {
   getBillingDetails,
   getFormattedTotalPrice,
   getRequestPaymentTransition,
-  getOfferOrderData,
+  hasFinalLineItems,
   getShippingDetailsMaybe,
   getTransactionTypeData,
   hasDefaultPaymentMethod,
@@ -174,10 +174,6 @@ const getOrderParams = (
 
   // These are the order parameters for the first payment-related transition
   // which is either initiate-transition or initiate-transition-after-enquiry
-  // Offers (default-purchase): the offered price or the counter offer to pay
-  const offerOrderData = getOfferOrderData(pageData.orderData);
-  const offerOrderDataMaybe = offerOrderData ? { offerOrderData } : {};
-
   const orderParams = {
     listingId: pageData?.listing?.id,
     ...deliveryMethodMaybe,
@@ -187,7 +183,6 @@ const getOrderParams = (
     ...priceVariantNameMaybe,
     ...protectedDataMaybe,
     ...optionalPaymentParams,
-    ...offerOrderDataMaybe,
   };
   return orderParams;
 };
@@ -210,12 +205,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
   if (shouldFetchSpeculatedTransaction) {
     const processAlias = pageData.listing.attributes.publicData?.transactionProcessAlias;
     const transactionId = tx ? tx.id : null;
-    const requestTransition = getRequestPaymentTransition(
-      tx,
-      process,
-      processAlias,
-      pageData.orderData
-    );
+    const requestTransition = getRequestPaymentTransition(tx, process, processAlias);
     const isPrivileged = process.isPrivileged(requestTransition);
 
     fetchSpeculatedTransaction(
@@ -365,10 +355,9 @@ const handleSubmit = (values, process, props, stripe, submitting, setSubmitting)
 
   // Guard against listing price (or shipping/commission) changing between the
   // speculated breakdown and the real payment request.
-  const breakdownTx =
-    pageData?.transaction?.attributes?.lineItems?.length > 0
-      ? pageData.transaction
-      : speculatedTransaction;
+  const breakdownTx = hasFinalLineItems(pageData?.transaction)
+    ? pageData.transaction
+    : speculatedTransaction;
   const payinTotal = breakdownTx?.attributes?.payinTotal;
   const expectedPayinTotalMaybe =
     typeof payinTotal?.amount === 'number' && payinTotal?.currency
@@ -546,10 +535,7 @@ export const CheckoutPageWithPayment = props => {
 
   // If existing transaction has line-items, it has gone through one of the request-payment transitions.
   // Otherwise, we try to rely on speculatedTransaction for order breakdown data.
-  const tx =
-    existingTransaction?.attributes?.lineItems?.length > 0
-      ? existingTransaction
-      : speculatedTransaction;
+  const tx = hasFinalLineItems(existingTransaction) ? existingTransaction : speculatedTransaction;
   const timeZone = listing?.attributes?.availabilityPlan?.timezone;
   const transactionProcessAlias = listing?.attributes?.publicData?.transactionProcessAlias;
   const priceVariantName = tx.attributes.protectedData?.priceVariantName;
@@ -602,7 +588,7 @@ export const CheckoutPageWithPayment = props => {
         // Error is shown by the form
       });
 
-  // Reveevo: buying and making offers need a verified email
+  // Reveevo: buying needs a verified email
   const isEmailUnverified = !!currentUser?.id && !isEmailVerified(currentUser);
 
   // Allow showing page when currentUser is still being downloaded,
@@ -659,19 +645,7 @@ export const CheckoutPageWithPayment = props => {
   // If your marketplace works mostly in one country you can use initial values to select country automatically
   // e.g. {country: 'FI'}
 
-  // Offers: the message written in the offer modal is sent with the order
-  const offerMessageMaybe = orderData?.offerMessage ? { message: orderData.offerMessage } : {};
-  const initialValuesForStripePayment = {
-    name: userName,
-    recipientName: userName,
-    ...offerMessageMaybe,
-  };
-  const offerOrderData = isPurchase ? getOfferOrderData(orderData) : null;
-  const offerInfoMessageId = offerOrderData?.counterOfferTransactionId
-    ? 'CheckoutPage.offerInfo.counterOffer'
-    : offerOrderData?.offerInSubunits
-    ? 'CheckoutPage.offerInfo.offer'
-    : null;
+  const initialValuesForStripePayment = { name: userName, recipientName: userName };
   // The shipping address is given in DeliveryAddressStep (not in StripePaymentForm).
   const askShippingDetails = false;
 
@@ -744,16 +718,10 @@ export const CheckoutPageWithPayment = props => {
             {errorMessages.retrievePaymentIntentErrorMessage}
             {errorMessages.paymentExpiredMessage}
 
-            {offerInfoMessageId ? (
-              <p className={css.offerInfo}>
-                <FormattedMessage id={offerInfoMessageId} />
-              </p>
-            ) : null}
-
             {isEmailUnverified ? (
               <EmailVerificationRequiredMessage
                 className={css.emailVerification}
-                action={getOfferOrderData(orderData)?.offerInSubunits ? 'offer' : 'buy'}
+                action="buy"
                 currentUser={currentUser}
                 onResendVerificationEmail={() => dispatch(sendVerificationEmail())}
                 sendVerificationEmailInProgress={sendVerificationEmailInProgress}

@@ -1,10 +1,10 @@
-;; Reveevo purchase process (release 3)
+;; Reveevo purchase process (release 4)
 ;;
 ;; Direct order: the buyer pays (card is held), the seller confirms the sale within 3 days and
 ;; picks the pick-up / collection day (payment is captured), or declines (hold is released).
-;; Offer: the buyer's card is held at the offered price. The seller accepts (= confirms the sale),
-;; declines, or makes a counter offer (hold is released). The buyer pays a counter offer at once
-;; in a new transaction (request-payment-for-counter-offer), or makes a new offer.
+;; Offer: the buyer and the seller negotiate the price in one transaction without a card hold
+;; (Stripe's amount can't change once the payment is created). When the price is accepted, the
+;; buyer chooses the delivery and pays within 3 days, and the order continues as a direct order.
 ;; Hand-over: the buyer's PIN is checked on the server, which then makes an operator transition.
 {:format :v3,
  :transitions
@@ -30,16 +30,6 @@
     {:name :action/privileged-set-line-items}
     {:name :action/stripe-create-payment-intent}],
    :from :state/inquiry,
-   :to :state/pending-payment}
-  {:name :transition/request-payment-for-counter-offer,
-   :actor :actor.role/customer,
-   :privileged? true,
-   :actions
-   [{:name :action/update-protected-data}
-    {:name :action/create-pending-stock-reservation}
-    {:name :action/privileged-set-line-items}
-    {:name :action/privileged-update-metadata}
-    {:name :action/stripe-create-payment-intent}],
    :to :state/pending-payment}
   {:name :transition/expire-payment,
    :at
@@ -95,104 +85,83 @@
    :privileged? true,
    :actions
    [{:name :action/update-protected-data}
-    {:name :action/create-proposed-stock-reservation}
     {:name :action/privileged-set-line-items}
-    {:name :action/privileged-update-metadata}
-    {:name :action/stripe-create-payment-intent}],
-   :to :state/offer-payment-pending}
-  {:name :transition/confirm-offer-payment,
-   :actor :actor.role/customer,
-   :actions [{:name :action/stripe-confirm-payment-intent}],
-   :from :state/offer-payment-pending,
+    {:name :action/privileged-update-metadata}],
    :to :state/offer-pending}
-  {:name :transition/expire-offer-payment,
-   :at
-   {:fn/plus
-    [{:fn/timepoint [:time/first-entered-state :state/offer-payment-pending]}
-     {:fn/period ["PT15M"]}]},
-   :actions
-   [{:name :action/calculate-full-refund}
-    {:name :action/stripe-refund-payment}
-    ;; Keep this action last in the list of actions for
-    ;; the transition
-    {:name :action/decline-stock-reservation}],
-   :from :state/offer-payment-pending,
-   :to :state/offer-payment-expired}
   {:name :transition/provider-accept-offer,
    :actor :actor.role/provider,
-   :actions
-   [{:name :action/update-protected-data}
-    {:name :action/accept-stock-reservation}
-    {:name :action/stripe-capture-payment-intent}],
+   :actions [],
    :from :state/offer-pending,
-   :to :state/purchased}
+   :to :state/offer-accepted}
   {:name :transition/provider-decline-offer,
    :actor :actor.role/provider,
-   :actions
-   [{:name :action/calculate-full-refund}
-    {:name :action/stripe-refund-payment}
-    ;; Keep this action last in the list of actions for
-    ;; the transition
-    {:name :action/decline-stock-reservation}],
+   :actions [],
    :from :state/offer-pending,
    :to :state/offer-declined}
+  {:name :transition/provider-make-counter-offer,
+   :actor :actor.role/provider,
+   :privileged? true,
+   :actions
+   [{:name :action/privileged-set-line-items}
+    {:name :action/privileged-update-metadata}],
+   :from :state/offer-pending,
+   :to :state/counter-offer-pending}
   {:name :transition/customer-withdraw-offer,
    :actor :actor.role/customer,
-   :actions
-   [{:name :action/calculate-full-refund}
-    {:name :action/stripe-refund-payment}
-    ;; Keep this action last in the list of actions for
-    ;; the transition
-    {:name :action/decline-stock-reservation}],
+   :actions [],
    :from :state/offer-pending,
    :to :state/offer-withdrawn}
   {:name :transition/expire-offer,
    :at
    {:fn/plus
-    [{:fn/timepoint [:time/first-entered-state :state/offer-pending]}
+    [{:fn/timepoint [:time/last-entered-state :state/offer-pending]}
      {:fn/period ["P3D"]}]},
-   :actions
-   [{:name :action/calculate-full-refund}
-    {:name :action/stripe-refund-payment}
-    ;; Keep this action last in the list of actions for
-    ;; the transition
-    {:name :action/decline-stock-reservation}],
+   :actions [],
    :from :state/offer-pending,
    :to :state/offer-expired}
-  {:name :transition/provider-make-counter-offer,
-   :actor :actor.role/provider,
-   :privileged? true,
-   :actions
-   [{:name :action/privileged-update-metadata}
-    {:name :action/calculate-full-refund}
-    {:name :action/stripe-refund-payment}
-    ;; Keep this action last in the list of actions for
-    ;; the transition
-    {:name :action/decline-stock-reservation}],
-   :from :state/offer-pending,
-   :to :state/counter-offered}
   {:name :transition/customer-accept-counter-offer,
    :actor :actor.role/customer,
    :actions [],
-   :from :state/counter-offered,
-   :to :state/counter-offer-accepted}
-  {:name :transition/customer-make-counter-offer,
-   :actor :actor.role/customer,
-   :actions [],
-   :from :state/counter-offered,
-   :to :state/customer-countered}
+   :from :state/counter-offer-pending,
+   :to :state/offer-accepted}
   {:name :transition/customer-decline-counter-offer,
    :actor :actor.role/customer,
    :actions [],
-   :from :state/counter-offered,
+   :from :state/counter-offer-pending,
    :to :state/offer-declined}
+  {:name :transition/customer-make-counter-offer,
+   :actor :actor.role/customer,
+   :privileged? true,
+   :actions
+   [{:name :action/privileged-set-line-items}
+    {:name :action/privileged-update-metadata}],
+   :from :state/counter-offer-pending,
+   :to :state/offer-pending}
   {:name :transition/expire-counter-offer,
    :at
    {:fn/plus
-    [{:fn/timepoint [:time/first-entered-state :state/counter-offered]}
+    [{:fn/timepoint [:time/last-entered-state :state/counter-offer-pending]}
      {:fn/period ["P3D"]}]},
    :actions [],
-   :from :state/counter-offered,
+   :from :state/counter-offer-pending,
+   :to :state/offer-expired}
+  {:name :transition/request-payment-after-offer,
+   :actor :actor.role/customer,
+   :privileged? true,
+   :actions
+   [{:name :action/update-protected-data}
+    {:name :action/create-pending-stock-reservation}
+    {:name :action/privileged-set-line-items}
+    {:name :action/stripe-create-payment-intent}],
+   :from :state/offer-accepted,
+   :to :state/pending-payment}
+  {:name :transition/expire-accepted-offer,
+   :at
+   {:fn/plus
+    [{:fn/timepoint [:time/first-entered-state :state/offer-accepted]}
+     {:fn/period ["P3D"]}]},
+   :actions [],
+   :from :state/offer-accepted,
    :to :state/offer-expired}
   {:name :transition/operator-mark-collected,
    :actor :actor.role/operator,
@@ -365,10 +334,6 @@
    :on :transition/provider-confirm-order,
    :to :actor.role/customer,
    :template :purchase-order-receipt}
-  {:name :notification/order-receipt-from-offer,
-   :on :transition/provider-accept-offer,
-   :to :actor.role/customer,
-   :template :purchase-order-receipt}
   {:name :notification/order-declined,
    :on :transition/provider-decline-order,
    :to :actor.role/customer,
@@ -382,13 +347,21 @@
    :to :actor.role/provider,
    :template :purchase-order-confirmation-expired-to-provider}
   {:name :notification/purchase-new-offer,
-   :on :transition/confirm-offer-payment,
+   :on :transition/customer-make-offer,
+   :to :actor.role/provider,
+   :template :purchase-new-offer}
+  {:name :notification/purchase-new-offer-from-counter,
+   :on :transition/customer-make-counter-offer,
    :to :actor.role/provider,
    :template :purchase-new-offer}
   {:name :notification/purchase-new-counter-offer,
    :on :transition/provider-make-counter-offer,
    :to :actor.role/customer,
    :template :purchase-new-counter-offer}
+  {:name :notification/purchase-offer-accepted,
+   :on :transition/provider-accept-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-accepted}
   {:name :notification/purchase-offer-declined,
    :on :transition/provider-decline-offer,
    :to :actor.role/customer,
@@ -403,6 +376,10 @@
    :template :purchase-offer-expired}
   {:name :notification/purchase-counter-offer-expired,
    :on :transition/expire-counter-offer,
+   :to :actor.role/customer,
+   :template :purchase-offer-expired}
+  {:name :notification/purchase-accepted-offer-expired,
+   :on :transition/expire-accepted-offer,
    :to :actor.role/customer,
    :template :purchase-offer-expired}
   {:name :notification/order-handover-confirmed,
