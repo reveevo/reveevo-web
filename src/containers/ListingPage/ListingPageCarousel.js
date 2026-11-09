@@ -12,6 +12,7 @@ import { OFFER, REQUEST } from '../../transactions/transaction';
 import { getMarketplaceEntities } from '../../ducks/marketplaceData.duck';
 import { manageDisableScrolling, isScrollingDisabled } from '../../ducks/ui.duck';
 import { initializeCardPaymentData } from '../../ducks/stripe.duck.js';
+import { sendVerificationEmail } from '../../ducks/user.duck';
 
 // Shared components
 import {
@@ -24,6 +25,8 @@ import {
   LayoutSingleColumn,
   SectionText,
   MakeOfferModal,
+  EmailVerificationRequiredModal,
+  isEmailVerified,
 } from '../../components';
 
 // Related components and modules
@@ -70,6 +73,8 @@ export const ListingPageComponent = props => {
   const [mounted, setMounted] = useState(false);
   // Order details ({ quantity, maxQuantity }) for the offer. The make-offer modal is open when set.
   const [makeOfferOrderDetails, setMakeOfferOrderDetails] = useState(null);
+  // Reveevo: buying and making offers need a verified email ('buy' | 'offer' | null)
+  const [emailVerificationAction, setEmailVerificationAction] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -91,6 +96,9 @@ export const ListingPageComponent = props => {
     sendInquiryInProgress,
     sendInquiryError,
     history,
+    sendVerificationEmailInProgress,
+    sendVerificationEmailError,
+    onResendVerificationEmail,
     callSetInitialValues,
     onSendInquiry,
     onInitializeCardPaymentData,
@@ -188,14 +196,24 @@ export const ListingPageComponent = props => {
   });
 
   // Customers can make an offer on product listings instead of paying the listed price.
+  // Logged in users need a verified email to buy or make an offer (guests sign up first)
+  const isPurchase = processType === 'purchase';
+  const requireVerifiedEmail = (action, callback) => (...args) =>
+    currentUser?.id && !isEmailVerified(currentUser)
+      ? setEmailVerificationAction(action)
+      : callback(...args);
+
   const onOpenMakeOfferModal =
-    processType === 'purchase' && !isOwnListing
-      ? handleOpenMakeOfferModal({
-          ...commonParams,
-          currentUser,
-          location,
-          setMakeOfferOrderDetails,
-        })
+    isPurchase && !isOwnListing
+      ? requireVerifiedEmail(
+          'offer',
+          handleOpenMakeOfferModal({
+            ...commonParams,
+            currentUser,
+            location,
+            setMakeOfferOrderDetails,
+          })
+        )
       : null;
   const onSubmitOffer = handleSubmitOffer({
     ...commonParams,
@@ -231,7 +249,8 @@ export const ListingPageComponent = props => {
         getListing,
         onInitializeCardPaymentData,
       });
-      onSubmit(values);
+      const onSubmitMaybe = isPurchase ? requireVerifiedEmail('buy', onSubmit) : onSubmit;
+      onSubmitMaybe(values);
     }
   };
 
@@ -366,6 +385,17 @@ export const ListingPageComponent = props => {
             />
           </div>
         </div>
+        <EmailVerificationRequiredModal
+          id="ListingPage.emailVerificationModal"
+          isOpen={!!emailVerificationAction}
+          onClose={() => setEmailVerificationAction(null)}
+          onManageDisableScrolling={onManageDisableScrolling}
+          action={emailVerificationAction || 'buy'}
+          currentUser={currentUser}
+          onResendVerificationEmail={onResendVerificationEmail}
+          sendVerificationEmailInProgress={sendVerificationEmailInProgress}
+          sendVerificationEmailError={sendVerificationEmailError}
+        />
         {onOpenMakeOfferModal ? (
           <MakeOfferModal
             id="ListingPage.makeOfferModal"
@@ -438,6 +468,9 @@ const ListingPage = props => {
     inquiryModalOpenForListingId,
   } = useSelector(state => state.ListingPage);
   const currentUser = useSelector(state => state.user?.currentUser);
+  const { sendVerificationEmailInProgress, sendVerificationEmailError } = useSelector(
+    state => state.user
+  );
   const scrollingDisabled = useSelector(state => isScrollingDisabled(state));
 
   const getListing = useCallback(
@@ -473,6 +506,9 @@ const ListingPage = props => {
     params => dispatch(fetchTransactionLineItems(params)),
     [dispatch]
   );
+  const onResendVerificationEmail = useCallback(() => dispatch(sendVerificationEmail()), [
+    dispatch,
+  ]);
   const onSendInquiry = useCallback((listing, message) => dispatch(sendInquiry(listing, message)), [
     dispatch,
   ]);
@@ -509,6 +545,9 @@ const ListingPage = props => {
       callSetInitialValues={callSetInitialValues}
       onFetchTransactionLineItems={onFetchTransactionLineItems}
       onSendInquiry={onSendInquiry}
+      onResendVerificationEmail={onResendVerificationEmail}
+      sendVerificationEmailInProgress={sendVerificationEmailInProgress}
+      sendVerificationEmailError={sendVerificationEmailError}
       onInitializeCardPaymentData={onInitializeCardPaymentData}
       onFetchTimeSlots={onFetchTimeSlots}
     />

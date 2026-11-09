@@ -41,12 +41,14 @@ import { INQUIRY_PROCESS_NAME, resolveLatestProcessName } from '../../../transac
 
 // Import shared components
 import {
+  EmailVerificationRequiredModal,
   Heading,
   Modal,
   NamedRedirect,
   Tabs,
   StripeConnectAccountStatusBox,
   StripeConnectAccountForm,
+  isEmailVerified,
 } from '../../../components';
 
 // Import modules from this directory
@@ -439,6 +441,7 @@ class EditListingWizard extends Component {
     this.state = {
       draftId: null,
       showPayoutDetails: false,
+      showEmailVerification: false,
       selectedListingType: null,
       mounted: false,
     };
@@ -472,6 +475,12 @@ class EditListingWizard extends Component {
       fileUploadsDisabled,
       allFilesUploadedAndVerified,
     } = this.props;
+    // Reveevo: sellers need a verified email to publish listings
+    if (!isEmailVerified(currentUser)) {
+      this.setState({ showEmailVerification: true });
+      return;
+    }
+
     const processName = listing?.attributes?.publicData?.transactionProcessAlias.split('/')[0];
     const isInquiryProcess = processName === INQUIRY_PROCESS_NAME;
 
@@ -754,6 +763,17 @@ class EditListingWizard extends Component {
             );
           })}
         </Tabs>
+        <EmailVerificationRequiredModal
+          id="EditListingWizard.emailVerificationModal"
+          isOpen={this.state.showEmailVerification}
+          onClose={() => this.setState({ showEmailVerification: false })}
+          onManageDisableScrolling={onManageDisableScrolling}
+          action="publish"
+          currentUser={currentUser}
+          onResendVerificationEmail={this.props.onResendVerificationEmail}
+          sendVerificationEmailInProgress={this.props.sendVerificationEmailInProgress}
+          sendVerificationEmailError={this.props.sendVerificationEmailError}
+        />
         <Modal
           id="EditListingWizard.payoutModal"
           isOpen={this.state.showPayoutDetails}

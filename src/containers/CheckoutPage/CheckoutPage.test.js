@@ -145,6 +145,7 @@ describe('CheckoutPage', () => {
               neighborhood: 'Roma Norte',
               details: 'Apartment 4',
               countryCode: 'MX',
+              regionCode: 'MX-CMX',
               phoneNumber: '+52 55 1234 5678',
             },
           },

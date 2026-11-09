@@ -10,6 +10,7 @@ const { LatLng } = sdkTypes;
  *   neighborhood: 'Wedding',                              // required (prefilled from autocomplete)
  *   details: 'Apartment 4, 2nd floor',                    // optional extra info
  *   countryCode: 'MX',                                    // from autocomplete (only Mexico)
+ *   regionCode: 'MX-CMX',                                 // Mexico City or Estado de México
  *   name: 'Maria Lopez',                                  // from user's profile (not editable)
  *   phoneNumber: '+52 55 1234 5678',                       // required (for the delivery)
  * }
@@ -18,8 +19,19 @@ const { LatLng } = sdkTypes;
  */
 export const DELIVERY_ADDRESS_KEY = 'deliveryAddress';
 
-// Reveevo delivers only in Mexico.
+// Reveevo delivers only in Mexico, in Mexico City and Estado de México.
+// Note: keep in sync with server/services/shipping/addresses.js
 export const DELIVERY_COUNTRY_CODE = 'MX';
+export const DELIVERY_REGION_CODES = ['MX-CMX', 'MX-MEX'];
+
+/**
+ * Checks that the place (from the address autocomplete) is in the delivery area.
+ *
+ * @param {{ countryCode: string, regionCode: string }} place
+ * @returns {boolean}
+ */
+export const isInDeliveryArea = place =>
+  place?.countryCode === DELIVERY_COUNTRY_CODE && DELIVERY_REGION_CODES.includes(place?.regionCode);
 
 // Shipping quote errors from the server (error's statusText).
 // Note: keep in sync with SHIPPING_ERROR_CODES in server/services/shipping/index.js
@@ -39,9 +51,9 @@ const isCoordinate = value => typeof value === 'number' && Number.isFinite(value
  * @returns {boolean}
  */
 export const isCompleteDeliveryAddress = deliveryAddress => {
-  const { address, origin, neighborhood, countryCode, phoneNumber } = deliveryAddress || {};
+  const { address, origin, neighborhood, phoneNumber } = deliveryAddress || {};
   return (
-    countryCode === DELIVERY_COUNTRY_CODE &&
+    isInDeliveryArea(deliveryAddress) &&
     !!phoneNumber?.trim?.() &&
     !!address?.trim?.() &&
     !!neighborhood?.trim?.() &&
@@ -75,7 +87,7 @@ const getUserFullName = currentUser => {
  */
 export const getDeliveryAddressFormValues = (deliveryAddress, currentUser) => {
   const contactPhoneNumber = currentUser?.attributes?.profile?.protectedData?.phoneNumber;
-  const { address, origin, neighborhood, details, countryCode, phoneNumber } =
+  const { address, origin, neighborhood, details, countryCode, regionCode, phoneNumber } =
     deliveryAddress || {};
   const phoneNumberMaybe =
     phoneNumber || contactPhoneNumber ? { phoneNumber: phoneNumber || contactPhoneNumber } : {};
@@ -85,7 +97,12 @@ export const getDeliveryAddressFormValues = (deliveryAddress, currentUser) => {
     ? {
         location: {
           search: address,
-          selectedPlace: { address, origin: new LatLng(origin.lat, origin.lng), countryCode },
+          selectedPlace: {
+            address,
+            origin: new LatLng(origin.lat, origin.lng),
+            countryCode,
+            regionCode,
+          },
         },
         neighborhood,
         details,
@@ -105,13 +122,14 @@ export const getDeliveryAddressFormValues = (deliveryAddress, currentUser) => {
  */
 export const getDeliveryAddressFromFormValues = (values, currentUser) => {
   const { location, neighborhood, details, phoneNumber } = values || {};
-  const { address, origin, countryCode } = location?.selectedPlace || {};
+  const { address, origin, countryCode, regionCode } = location?.selectedPlace || {};
   return {
     address: address?.trim() || '',
     origin: { lat: origin?.lat, lng: origin?.lng },
     neighborhood: neighborhood?.trim() || '',
     details: details?.trim() || '',
     countryCode: countryCode || null,
+    regionCode: regionCode || null,
     name: getUserFullName(currentUser),
     phoneNumber: phoneNumber?.trim() || '',
   };

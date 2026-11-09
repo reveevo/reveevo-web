@@ -21,6 +21,7 @@ const address = (lat, lng, neighborhood = 'Roma Norte') => ({
   neighborhood,
   details: '',
   countryCode: 'MX',
+  regionCode: 'MX-CMX',
   phoneNumber: '+52 55 1234 5678',
 });
 
@@ -79,6 +80,11 @@ describe('delivery address', () => {
     expect(isCompleteDeliveryAddress({ ...address(19.4, -99.1), neighborhood: ' ' })).toBe(false);
     expect(isCompleteDeliveryAddress({ ...address(19.4, -99.1), origin: {} })).toBe(false);
     expect(isCompleteDeliveryAddress({ ...address(52.5, 13.3), countryCode: 'DE' })).toBe(false);
+    // Only Mexico City and Estado de México
+    expect(isCompleteDeliveryAddress({ ...address(19.4, -99.1), regionCode: 'MX-MEX' })).toBe(true);
+    expect(isCompleteDeliveryAddress({ ...address(20.6, -103.3), regionCode: 'MX-JAL' })).toBe(
+      false
+    );
     expect(isCompleteDeliveryAddress(null)).toBe(false);
   });
 });

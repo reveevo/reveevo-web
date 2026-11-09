@@ -478,3 +478,10 @@
   background-color: var(--colorGrey50);
   color: var(--colorGrey700);
 }
+
+.emailVerification {
+  margin: 0 0 24px 0;
+  padding: 16px;
+  border-radius: var(--borderRadiusMedium);
+  background-color: var(--colorGrey50);
+}

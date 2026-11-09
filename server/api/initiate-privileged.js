@@ -4,6 +4,7 @@ const { transactionLineItems } = require('../api-util/lineItems');
 const { isIntentionToMakeOffer } = require('../api-util/negotiation');
 const { getShippingQuote, needsShippingQuote } = require('../services/shipping');
 const { getOfferPricing, closePreviousOfferTransaction } = require('../services/offers');
+const { assertEmailVerified, requiresVerifiedEmail } = require('../services/users');
 const {
   createCookieTokenStore,
   getSdk,
@@ -46,6 +47,11 @@ module.exports = (req, res) => {
     .then(async ([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
       const commissionAsset = fetchAssetsResponse.data.data[0];
+
+      // Buying and making offers need a verified email (checked on the real order only)
+      if (!isSpeculative && requiresVerifiedEmail(transitionName)) {
+        await assertEmailVerified(sdk);
+      }
 
       const currency = listing.attributes.price?.currency || orderData.currency;
       const { providerCommission, customerCommission } =

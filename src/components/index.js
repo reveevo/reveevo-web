@@ -149,6 +149,11 @@ export { default as StripeConnectAccountForm } from './StripeConnectAccountForm/
 export { default as DeliveryAddressForm } from './DeliveryAddressForm/DeliveryAddressForm';
 export { default as MakeOfferModal } from './MakeOfferModal/MakeOfferModal';
 export { default as HandoverPinForm } from './HandoverPinForm/HandoverPinForm';
+export {
+  default as EmailVerificationRequiredModal,
+  EmailVerificationRequiredMessage,
+  isEmailVerified,
+} from './EmailVerificationRequired/EmailVerificationRequired';
 
 //////////////////////////////////////////////
 // Page sections and modal content wrappers //

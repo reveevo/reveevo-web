@@ -29,9 +29,19 @@ import {
 
 // Import global ducks
 import { saveDeliveryAddress } from '../../ducks/deliveryAddress.duck';
+import { sendVerificationEmail } from '../../ducks/user.duck';
 
 // Import shared components
-import { H3, H4, NamedLink, OrderBreakdown, Page, TopbarSimplified } from '../../components';
+import {
+  EmailVerificationRequiredMessage,
+  H3,
+  H4,
+  NamedLink,
+  OrderBreakdown,
+  Page,
+  TopbarSimplified,
+  isEmailVerified,
+} from '../../components';
 
 // Session helpers file needs to be imported before other CheckoutPage modules that use it
 import { clearData } from './CheckoutPageSessionHelpers';
@@ -492,6 +502,9 @@ export const CheckoutPageWithPayment = props => {
   const { saveDeliveryAddressInProgress, saveDeliveryAddressError } = useSelector(
     state => state.deliveryAddress
   );
+  const { sendVerificationEmailInProgress, sendVerificationEmailError } = useSelector(
+    state => state.user
+  );
 
   const {
     scrollingDisabled,
@@ -589,10 +602,14 @@ export const CheckoutPageWithPayment = props => {
         // Error is shown by the form
       });
 
+  // Reveevo: buying and making offers need a verified email
+  const isEmailUnverified = !!currentUser?.id && !isEmailVerified(currentUser);
+
   // Allow showing page when currentUser is still being downloaded,
   // but show payment form only when user info is loaded.
   const showPaymentForm = !!(
     currentUser &&
+    !isEmailUnverified &&
     !showDeliveryAddressForm &&
     !listingNotFound &&
     !initiateOrderError &&
@@ -733,7 +750,18 @@ export const CheckoutPageWithPayment = props => {
               </p>
             ) : null}
 
-            {isShippingCheckout && currentUser ? (
+            {isEmailUnverified ? (
+              <EmailVerificationRequiredMessage
+                className={css.emailVerification}
+                action={getOfferOrderData(orderData)?.offerInSubunits ? 'offer' : 'buy'}
+                currentUser={currentUser}
+                onResendVerificationEmail={() => dispatch(sendVerificationEmail())}
+                sendVerificationEmailInProgress={sendVerificationEmailInProgress}
+                sendVerificationEmailError={sendVerificationEmailError}
+              />
+            ) : null}
+
+            {isShippingCheckout && currentUser && !isEmailUnverified ? (
               <DeliveryAddressStep
                 deliveryAddress={deliveryAddress}
                 currentUser={currentUser}

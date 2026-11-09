@@ -24,6 +24,7 @@ import { listingImageApiId, listingImageIdString } from './EditListingPage.share
 import { hasPermissionToPostListings, isUserAuthorized } from '../../util/userHelpers';
 import { getMarketplaceEntities } from '../../ducks/marketplaceData.duck';
 import { manageDisableScrolling, isScrollingDisabled } from '../../ducks/ui.duck';
+import { sendVerificationEmail } from '../../ducks/user.duck';
 import {
   stripeAccountClearError,
   getStripeConnectAccountLink,
@@ -161,6 +162,9 @@ export const EditListingPageComponent = props => {
     onDeleteAvailabilityException,
     onCreateListingDraft,
     onPublishListingDraft,
+    onResendVerificationEmail,
+    sendVerificationEmailInProgress,
+    sendVerificationEmailError,
     onUpdateListing,
     onImageUpload,
     onRemoveListingImage,
@@ -315,6 +319,9 @@ export const EditListingPageComponent = props => {
           onUpdateListing={onUpdateListing}
           onCreateListingDraft={onCreateListingDraft}
           onPublishListingDraft={onPublishListingDraft}
+          onResendVerificationEmail={onResendVerificationEmail}
+          sendVerificationEmailInProgress={sendVerificationEmailInProgress}
+          sendVerificationEmailError={sendVerificationEmailError}
           onPayoutDetailsChange={onPayoutDetailsChange}
           onPayoutDetailsSubmit={onPayoutDetailsSubmit}
           onGetStripeConnectAccountLink={onGetStripeConnectAccountLink}
@@ -393,6 +400,8 @@ const mapStateToProps = state => {
     stripeAccount,
     stripeAccountFetched,
     currentUser: state.user.currentUser,
+    sendVerificationEmailInProgress: state.user.sendVerificationEmailInProgress,
+    sendVerificationEmailError: state.user.sendVerificationEmailError,
     fetchInProgress: createStripeAccountInProgress,
     getOwnListing,
     page,
@@ -413,6 +422,7 @@ const mapDispatchToProps = dispatch => ({
   onUpdateListing: (tab, values, config) => dispatch(requestUpdateListing(tab, values, config)),
   onCreateListingDraft: (values, config) => dispatch(requestCreateListingDraft(values, config)),
   onPublishListingDraft: listingId => dispatch(requestPublishListingDraft(listingId)),
+  onResendVerificationEmail: () => dispatch(sendVerificationEmail()),
   onImageUpload: (data, listingImageConfig) =>
     dispatch(requestImageUpload(data, listingImageConfig)),
   onManageDisableScrolling: (componentId, disableScrolling) =>

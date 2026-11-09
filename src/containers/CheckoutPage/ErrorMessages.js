@@ -39,10 +39,14 @@ export const getErrorMessages = (
   const stripeErrors = transactionInitiateOrderStripeErrors(initiateOrderError);
 
   const initiateShippingErrorCode = getShippingErrorCode(initiateOrderError);
+  // Note: keep in sync with EMAIL_NOT_VERIFIED in server/services/users
+  const isEmailNotVerifiedError = initiateOrderError?.statusText === 'email-not-verified';
   const speculateShippingErrorCode = getShippingErrorCode(speculateTransactionError);
 
   // We want to show one error at a time for the real transition
-  if (initiateShippingErrorCode) {
+  if (isEmailNotVerifiedError) {
+    initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.emailNotVerifiedError" />;
+  } else if (initiateShippingErrorCode) {
     initiateOrderErrorMessage = (
       <FormattedMessage id={`CheckoutPage.shippingError.${initiateShippingErrorCode}`} />
     );

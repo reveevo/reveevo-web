@@ -19,6 +19,7 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { getShippingQuote, needsShippingQuote } = require('../services/shipping');
+const { assertEmailVerified, requiresVerifiedEmail } = require('../services/users');
 
 const { Money } = sharetribeSdk.types;
 
@@ -157,6 +158,11 @@ module.exports = (req, res) => {
         orderData.currency;
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
+
+      // Buying needs a verified email (checked on the real order only)
+      if (!isSpeculative && requiresVerifiedEmail(transitionName)) {
+        await assertEmailVerified(sdk);
+      }
 
       // Shipped purchases: the fee depends on the vehicle and the distance between the parties.
       const shippingQuote = needsShippingQuote(transitionName, orderData)

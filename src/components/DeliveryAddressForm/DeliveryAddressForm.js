@@ -10,7 +10,7 @@ import {
   composeValidators,
   required,
 } from '../../util/validators';
-import { DELIVERY_COUNTRY_CODE } from '../../util/deliveryAddress';
+import { DELIVERY_COUNTRY_CODE, isInDeliveryArea } from '../../util/deliveryAddress';
 
 import {
   FieldLocationAutocompleteInput,
@@ -24,11 +24,9 @@ import css from './DeliveryAddressForm.module.css';
 
 const identity = v => v;
 
-// Reveevo delivers only in Mexico: the selected place must be in Mexico.
-const placeInDeliveryCountry = message => value =>
-  value?.selectedPlace && value.selectedPlace.countryCode !== DELIVERY_COUNTRY_CODE
-    ? message
-    : undefined;
+// Reveevo delivers only in Mexico City and Estado de México
+const placeInDeliveryArea = message => value =>
+  value?.selectedPlace && !isInDeliveryArea(value.selectedPlace) ? message : undefined;
 
 // When an address is picked from the autocomplete, prefill the neighborhood from it.
 // The user can still change it (the field stays editable).
@@ -85,9 +83,7 @@ const DeliveryAddressForm = props => {
           autocompletePlaceSelected(
             intl.formatMessage({ id: 'DeliveryAddressForm.addressNotRecognized' })
           ),
-          placeInDeliveryCountry(
-            intl.formatMessage({ id: 'DeliveryAddressForm.addressNotInMexico' })
-          )
+          placeInDeliveryArea(intl.formatMessage({ id: 'DeliveryAddressForm.addressNotInMexico' }))
         );
 
         return (

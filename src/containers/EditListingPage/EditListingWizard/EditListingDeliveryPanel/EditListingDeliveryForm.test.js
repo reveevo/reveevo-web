@@ -16,6 +16,7 @@ const deliveryAddress = {
   neighborhood: 'Roma Norte',
   details: '',
   countryCode: 'MX',
+  regionCode: 'MX-MEX',
   phoneNumber: '+52 55 1234 5678',
 };
 

@@ -95,6 +95,27 @@ const placeCountryCode = prediction => {
   return shortCode ? shortCode.toUpperCase() : null;
 };
 
+/**
+ * State / region of the place as ISO 3166-2 code (e.g. 'MX-MEX' for Estado de México).
+ * Note: Mapbox lists Mexico City as a 'place' (not a 'region') with the code 'MX-CMX'.
+ *
+ * @param {Object} prediction Mapbox geocoding feature
+ * @returns {string|null}
+ */
+const placeRegionCode = prediction => {
+  const isSubdivisionCode = code => /^[a-z]{2}-[a-z0-9]+$/i.test(code || '');
+  const ownCode = prediction?.properties?.short_code;
+  const isOwnRegion = ['region', 'place'].some(t => prediction?.place_type?.includes(t));
+  const context = prediction?.context || [];
+  const contextCode = type =>
+    context.find(c => c.id?.startsWith(`${type}.`) && isSubdivisionCode(c.short_code))?.short_code;
+  const code =
+    (isOwnRegion && isSubdivisionCode(ownCode) ? ownCode : null) ||
+    contextCode('region') ||
+    contextCode('place');
+  return code ? code.toUpperCase() : null;
+};
+
 export const GeocoderAttribution = () => null;
 
 /**
@@ -197,6 +218,7 @@ class GeocoderMapbox {
       bounds: placeBounds(prediction),
       neighborhood: placeNeighborhood(prediction),
       countryCode: placeCountryCode(prediction),
+      regionCode: placeRegionCode(prediction),
     });
   }
 }

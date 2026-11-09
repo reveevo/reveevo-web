@@ -1,0 +1,22 @@
+.root {
+  margin: 0;
+}
+
+.heading {
+  composes: h2 from global;
+  margin: 0 0 16px 0;
+}
+
+.text {
+  margin: 0 0 12px 0;
+  color: var(--colorGrey700);
+}
+
+.resendButton {
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.error {
+  color: var(--colorFail);
+  margin: 0;
+}

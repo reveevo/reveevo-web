@@ -13,6 +13,7 @@ const deliveryAddress = {
   neighborhood: 'Del Carmen',
   details: 'Casa azul',
   countryCode: 'MX',
+  regionCode: 'MX-CMX',
   phoneNumber: '+52 55 1234 5678',
 };
 
