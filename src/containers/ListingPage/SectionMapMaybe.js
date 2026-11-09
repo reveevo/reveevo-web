@@ -45,6 +45,16 @@ class SectionMapMaybe extends Component {
         <Heading as="h2" rootClassName={css.sectionHeadingWithExtraMargin}>
           <FormattedMessage id="ListingPage.locationTitle" />
         </Heading>
+        {/* Reveevo: only the neighborhood is public. The exact address is shared with the
+            buyer after the seller confirms the order. */}
+        {publicData?.location?.neighborhood ? (
+          <p className={css.locationNote}>
+            <FormattedMessage
+              id="ListingPage.locationNeighborhoodNote"
+              values={{ neighborhood: publicData.location.neighborhood }}
+            />
+          </p>
+        ) : null}
         {this.state.isStatic ? (
           <button
             className={css.map}

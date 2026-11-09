@@ -4,10 +4,13 @@ const { getVehicleForListing, DEFAULT_VEHICLE } = require('./vehicles');
 const { isCompleteDeliveryAddress } = require('./addresses');
 
 jest.mock('../mapbox', () => ({ getDrivingDistanceKm: jest.fn() }));
-jest.mock('../sharetribe', () => ({ getUserDeliveryAddress: jest.fn() }));
+jest.mock('../sharetribe', () => ({
+  getUserDeliveryAddress: jest.fn(),
+  getListingPickupAddress: jest.fn(),
+}));
 
 const { getDrivingDistanceKm } = require('../mapbox');
-const { getUserDeliveryAddress } = require('../sharetribe');
+const { getListingPickupAddress, getUserDeliveryAddress } = require('../sharetribe');
 const { getShippingQuote, needsShippingQuote, SHIPPING_ERROR_CODES } = require('./index');
 
 const { Money } = types;
@@ -82,6 +85,7 @@ describe('delivery address', () => {
 
 describe('getShippingQuote', () => {
   const listing = {
+    id: 'listing-id',
     attributes: {
       price: new Money(100000, 'MXN'),
       publicData: { categoryLevel2: 'couch', couch_type: '3-seater' },
@@ -100,6 +104,30 @@ describe('getShippingQuote', () => {
   beforeEach(() => {
     getDrivingDistanceKm.mockReset();
     getUserDeliveryAddress.mockReset();
+    getListingPickupAddress.mockReset();
+    getListingPickupAddress.mockResolvedValue(null);
+  });
+
+  it("measures the distance from the listing's private pickup address", async () => {
+    getUserDeliveryAddress.mockResolvedValue(address(19.42, -99.16, 'Condesa'));
+    getListingPickupAddress.mockResolvedValue({
+      address: 'Calle Londres 247',
+      details: '',
+      neighborhood: 'Del Carmen',
+      origin: { lat: 19.355, lng: -99.162 },
+    });
+    getDrivingDistanceKm.mockResolvedValue(4);
+    const sdk = sdkWithCustomerAddress(address(19.43, -99.13));
+
+    const quote = await getShippingQuote({ sdk, listing, providerId: 'provider-id' });
+
+    expect(getDrivingDistanceKm).toHaveBeenCalledWith(
+      expect.objectContaining({ from: { lat: 19.355, lng: -99.162 } })
+    );
+    expect(quote.delivery.from).toMatchObject({
+      neighborhood: 'Del Carmen',
+      phoneNumber: '+52 55 1234 5678',
+    });
   });
 
   it('needs a quote only when a shipped order is paid', () => {

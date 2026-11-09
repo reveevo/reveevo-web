@@ -5,12 +5,13 @@ import classNames from 'classnames';
 // Import configs and util modules
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { LISTING_STATE_DRAFT, propTypes } from '../../../../util/types';
-import { types as sdkTypes } from '../../../../util/sdkLoader';
 import { displayDeliveryPickup, displayDeliveryShipping } from '../../../../util/configHelpers';
 import {
   getDeliveryAddress,
   getDeliveryAddressFormValues,
   getDeliveryAddressFromFormValues,
+  getListingPickupData,
+  isCompleteDeliveryAddress,
 } from '../../../../util/deliveryAddress';
 
 // Import global ducks
@@ -23,8 +24,6 @@ import { DeliveryAddressForm, H3, ListingLink, Modal } from '../../../../compone
 // Import modules from this directory
 import EditListingDeliveryForm from './EditListingDeliveryForm';
 import css from './EditListingDeliveryPanel.module.css';
-
-const { LatLng } = sdkTypes;
 
 const getInitialValues = props => {
   const { listing, listingTypes } = props;
@@ -147,13 +146,19 @@ const EditListingDeliveryPanel = props => {
             const shippingEnabled = deliveryOptions.includes('shipping');
             const pickupEnabled = deliveryOptions.includes('pickup');
 
-            // Direct pick up uses the seller's address (the same one as shipping).
-            // It's copied to the listing, so that buyers see where to pick up the item.
-            const { address, details, origin } = deliveryAddress || {};
-            const pickupDataMaybe =
-              pickupEnabled && address ? { location: { address, building: details || '' } } : {};
+            // Pick up and shipping start from the seller's address. The listing gets:
+            // - privateData.pickupAddress: the full address (for shipping quotes and for the
+            //   buyer after the seller confirms the order)
+            // - with direct pick up: the neighborhood and shifted coordinates (public)
+            const pickupData = isCompleteDeliveryAddress(deliveryAddress)
+              ? getListingPickupData(deliveryAddress, listing.id.uuid)
+              : null;
+            const hasDeliveryOption = pickupEnabled || shippingEnabled;
+            const pickupDataMaybe = pickupEnabled && pickupData ? pickupData.publicData : {};
             const geolocationMaybe =
-              pickupEnabled && origin ? { geolocation: new LatLng(origin.lat, origin.lng) } : {};
+              pickupEnabled && pickupData ? { geolocation: pickupData.geolocation } : {};
+            const privateDataMaybe =
+              hasDeliveryOption && pickupData ? { privateData: pickupData.privateData } : {};
 
             // Note: shipping fee is not set per listing. Reveevo calculates it at checkout
             // from the vehicle needed for the item and the distance (server/services/shipping).
@@ -161,6 +166,7 @@ const EditListingDeliveryPanel = props => {
             // New values for listing attributes
             const updateValues = {
               ...geolocationMaybe,
+              ...privateDataMaybe,
               publicData: {
                 pickupEnabled,
                 ...pickupDataMaybe,

@@ -1713,5 +1713,7 @@
   "DeliveryConfirmationPage.description": "Pide al comprador su PIN de 6 dígitos al entregar el artículo e ingrésalo aquí.",
   "DeliveryConfirmationPage.confirmed": "La entrega está confirmada. ¡Gracias!",
   "MakeOfferModal.deliveryMethodLabel": "Método de entrega",
-  "MakeOfferModal.deliveryMethodRequired": "Debes elegir un método de entrega."
+  "MakeOfferModal.deliveryMethodRequired": "Debes elegir un método de entrega.",
+  "ListingPage.locationNeighborhoodNote": "{neighborhood}. La dirección exacta se comparte con el comprador cuando el vendedor confirma el pedido.",
+  "TransactionPanel.pickupAddressAfterConfirmation": "La dirección exacta de recogida se comparte cuando el vendedor confirma el pedido."
 }

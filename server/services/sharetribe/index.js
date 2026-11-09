@@ -19,4 +19,16 @@ const getUserDeliveryAddress = async userId => {
   return response?.data?.data?.attributes?.profile?.privateData?.deliveryAddress || null;
 };
 
-module.exports = { getUserDeliveryAddress };
+/**
+ * Returns the exact pickup address saved to the listing's privateData (only the author can see
+ * it, so this uses the Integration API). The public data has only the neighborhood.
+ *
+ * @param {Object|string} listingId - The listing id (UUID object or string)
+ * @returns {Promise<Object|null>} { address, details, neighborhood, origin }
+ */
+const getListingPickupAddress = async listingId => {
+  const response = await getIntegrationSdk().listings.show({ id: toIntegrationUUID(listingId) });
+  return response?.data?.data?.attributes?.privateData?.pickupAddress || null;
+};
+
+module.exports = { getUserDeliveryAddress, getListingPickupAddress };

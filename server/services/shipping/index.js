@@ -1,6 +1,6 @@
 const { types } = require('sharetribe-flex-sdk');
 const { getDrivingDistanceKm } = require('../mapbox');
-const { getUserDeliveryAddress } = require('../sharetribe');
+const { getListingPickupAddress, getUserDeliveryAddress } = require('../sharetribe');
 const { isCompleteDeliveryAddress, pickDeliveryAddress } = require('./addresses');
 const { getPeopleNeeded, getShippingFeeInMXN, MAX_DISTANCE_KM } = require('./rates');
 const { getVehicleForListing } = require('./vehicles');
@@ -68,10 +68,20 @@ const getShippingQuote = async ({ sdk, listing, providerId }) => {
     throw createShippingError(SHIPPING_ERROR_CODES.CURRENCY_NOT_SUPPORTED, { currency });
   }
 
-  const [currentUserResponse, providerAddress] = await Promise.all([
+  // The item is collected from the listing's exact pickup address (listing's private data).
+  // Contact details (name, phone) come from the provider's saved address, which is also the
+  // fallback for listings that don't have the private pickup address yet.
+  const [currentUserResponse, providerProfileAddress, listingPickupAddress] = await Promise.all([
     sdk.currentUser.show(),
     getUserDeliveryAddress(providerId),
+    getListingPickupAddress(listing.id),
   ]);
+  const hasListingOrigin =
+    typeof listingPickupAddress?.origin?.lat === 'number' &&
+    typeof listingPickupAddress?.origin?.lng === 'number';
+  const providerAddress = hasListingOrigin
+    ? { ...providerProfileAddress, ...listingPickupAddress }
+    : providerProfileAddress;
   const customerAddress =
     currentUserResponse?.data?.data?.attributes?.profile?.privateData?.deliveryAddress;
 

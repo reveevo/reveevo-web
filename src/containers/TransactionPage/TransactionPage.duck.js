@@ -319,6 +319,18 @@ export const fetchTransactionThunk = createAsyncThunk(
 );
 
 // Backward compatible wrapper for fetchTransaction
+/**
+ * Returns the exact pickup address from the current user's own listing (privateData).
+ * The provider shares it with the customer when they confirm a pick-up order.
+ *
+ * @param {Object} listingId
+ * @returns {Promise<Object|null>} { address, details, neighborhood, origin }
+ */
+export const fetchOwnListingPickupAddress = listingId => (dispatch, getState, sdk) =>
+  sdk.ownListings
+    .show({ id: listingId })
+    .then(response => response.data.data.attributes.privateData?.pickupAddress || null);
+
 export const fetchTransaction = (id, txRole, config) => dispatch => {
   return dispatch(fetchTransactionThunk({ id, txRole, config }));
 };

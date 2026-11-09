@@ -52,7 +52,16 @@ const DeliveryInfoMaybe = props => {
   const isPickup = deliveryMethod === 'pickup';
 
   if (isPickup) {
-    const pickupLocation = listing?.attributes?.publicData?.location || {};
+    // The exact pickup address is shared when the provider confirms the order
+    // (protectedData.pickupAddress). Before that, only the neighborhood is public.
+    const { pickupAddress } = protectedData || {};
+    const pickupLocation = pickupAddress
+      ? { address: pickupAddress.address, building: pickupAddress.details }
+      : listing?.attributes?.publicData?.location || {};
+    const { origin } = pickupAddress || {};
+    const geolocation = origin
+      ? { lat: origin.lat, lng: origin.lng }
+      : listing?.attributes?.geolocation;
     return (
       <div className={classes}>
         <Heading as="h3" rootClassName={css.sectionHeading}>
@@ -62,9 +71,20 @@ const DeliveryInfoMaybe = props => {
           <AddressLinkMaybe
             linkRootClassName={css.pickupAddress}
             location={pickupLocation}
-            geolocation={listing?.attributes?.geolocation}
+            geolocation={geolocation}
             showAddress={true}
           />
+          {pickupAddress?.phoneNumber ? (
+            <p className={css.shippingInfoContent}>
+              {pickupAddress.name ? `${pickupAddress.name} · ` : ''}
+              {pickupAddress.phoneNumber}
+            </p>
+          ) : null}
+          {pickupAddress ? null : (
+            <p className={css.shippingInfoContent}>
+              <FormattedMessage id="TransactionPanel.pickupAddressAfterConfirmation" />
+            </p>
+          )}
         </div>
       </div>
     );

@@ -116,3 +116,65 @@ export const getDeliveryAddressFromFormValues = (values, currentUser) => {
     phoneNumber: phoneNumber?.trim() || '',
   };
 };
+
+////////////////////////////////////////////////////////////////////////////
+// Pickup location of a listing                                           //
+// The seller's exact address is never public:                            //
+// - listing's publicData.location: only the neighborhood                 //
+// - listing's geolocation: shifted up to PICKUP_LOCATION_SHIFT_METERS    //
+// - listing's privateData.pickupAddress: the full address (seller only)  //
+// The full address is copied to the transaction when the seller confirms //
+// the order. Note: keep in sync with server/services/shipping/pickupLocations.js
+////////////////////////////////////////////////////////////////////////////
+
+export const PICKUP_LOCATION_SHIFT_METERS = 300;
+const EARTH_RADIUS_METERS = 6371000;
+
+// FNV-1a hash of a string as a number in [0, 1)
+const hashToUnit = value => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967296;
+};
+
+/**
+ * Shifts the coordinates by up to PICKUP_LOCATION_SHIFT_METERS. The shift is derived from the
+ * listing id, so the same listing always gets the same shift (the point doesn't jump around).
+ *
+ * @param {{ lat: number, lng: number }} origin exact coordinates
+ * @param {string} listingId
+ * @returns {{ lat: number, lng: number }}
+ */
+export const getShiftedCoordinates = (origin, listingId) => {
+  const angle = 2 * Math.PI * hashToUnit(`${listingId}:angle`);
+  // sqrt spreads the points evenly over the circle's area
+  const distance = PICKUP_LOCATION_SHIFT_METERS * Math.sqrt(hashToUnit(`${listingId}:distance`));
+  const latRadians = (origin.lat * Math.PI) / 180;
+  const dLat = (distance * Math.cos(angle)) / EARTH_RADIUS_METERS;
+  const dLng = (distance * Math.sin(angle)) / (EARTH_RADIUS_METERS * Math.cos(latRadians));
+  return {
+    lat: origin.lat + (dLat * 180) / Math.PI,
+    lng: origin.lng + (dLng * 180) / Math.PI,
+  };
+};
+
+/**
+ * Listing data for direct pick up from the seller's delivery address.
+ *
+ * @param {Object} deliveryAddress seller's saved delivery address
+ * @param {string} listingId
+ * @returns {{ geolocation: LatLng, publicData: Object, privateData: Object }}
+ */
+export const getListingPickupData = (deliveryAddress, listingId) => {
+  const { address, details, origin, neighborhood } = deliveryAddress;
+  const shifted = getShiftedCoordinates(origin, listingId);
+  return {
+    geolocation: new LatLng(shifted.lat, shifted.lng),
+    // Note: 'address' is what the template shows for the pickup location (e.g. at checkout)
+    publicData: { location: { address: neighborhood, building: '', neighborhood } },
+    privateData: { pickupAddress: { address, details: details || '', neighborhood, origin } },
+  };
+};

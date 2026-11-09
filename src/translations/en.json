@@ -1714,5 +1714,7 @@
   "DeliveryConfirmationPage.description": "Ask the buyer for their 6 digit PIN when you hand over the item, and enter it here.",
   "DeliveryConfirmationPage.confirmed": "The delivery is confirmed. Thank you!",
   "MakeOfferModal.deliveryMethodLabel": "Delivery method",
-  "MakeOfferModal.deliveryMethodRequired": "You need to choose a delivery method."
+  "MakeOfferModal.deliveryMethodRequired": "You need to choose a delivery method.",
+  "ListingPage.locationNeighborhoodNote": "{neighborhood}. The exact address is shared with the buyer after the seller confirms the order.",
+  "TransactionPanel.pickupAddressAfterConfirmation": "The exact pick-up address is shared when the seller confirms the order."
 }

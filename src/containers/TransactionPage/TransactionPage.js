@@ -22,6 +22,7 @@ import { getCurrentUserTypeRoles, hasPermissionToViewData } from '../../util/use
 import { userDisplayNameAsString } from '../../util/data';
 import { isMobileSafari } from '../../util/userAgent';
 import { confirmHandover } from '../../util/api';
+import { getDeliveryAddress } from '../../util/deliveryAddress';
 import { storableError } from '../../util/errors';
 import { types as sdkTypes } from '../../util/sdkLoader';
 
@@ -95,6 +96,7 @@ import {
   selectFileUploads,
   downloadFile,
   fetchTransaction,
+  fetchOwnListingPickupAddress,
 } from './TransactionPage.duck';
 import css from './TransactionPage.module.css';
 
@@ -390,6 +392,7 @@ export const TransactionPageComponent = props => {
     callSetInitialValues,
     onInitializeCardPaymentData,
     onFetchTransaction,
+    onFetchOwnListingPickupAddress,
     onUploadFile,
     fileUploads,
     onClearUploadedFiles,
@@ -579,15 +582,36 @@ export const TransactionPageComponent = props => {
   };
 
   // The provider confirms the order (or accepts the offer) with the pick-up / collection day
+  // For direct pick up, the exact pickup address (listing's private data) and the provider's
+  // contact details are shared with the customer at the same time.
+  const getPickupAddressMaybe = () => {
+    const isPickup = transaction?.attributes?.protectedData?.deliveryMethod === 'pickup';
+    if (!isPickup) {
+      return Promise.resolve({});
+    }
+    const { name, phoneNumber, ...profileAddress } = getDeliveryAddress(currentUser) || {};
+    return onFetchOwnListingPickupAddress(listing.id)
+      .catch(() => null)
+      .then(listingPickupAddress => {
+        const pickupAddress = listingPickupAddress || profileAddress;
+        return pickupAddress?.address
+          ? { pickupAddress: { ...pickupAddress, name, phoneNumber } }
+          : {};
+      });
+  };
+
   const onConfirmOrder = values => {
     const { date, timeWindow } = values;
     const isOffer = process?.getState(transaction) === process?.states?.OFFER_PENDING;
     const transitionName = isOffer
       ? process.transitions.PROVIDER_ACCEPT_OFFER
       : process.transitions.PROVIDER_CONFIRM_ORDER;
-    onTransition(transaction.id, transitionName, {
-      protectedData: { handoverSlot: { date, timeWindow } },
-    })
+    getPickupAddressMaybe()
+      .then(pickupAddressMaybe =>
+        onTransition(transaction.id, transitionName, {
+          protectedData: { handoverSlot: { date, timeWindow }, ...pickupAddressMaybe },
+        })
+      )
       .then(() => setConfirmOrderModalOpen(false))
       .catch(() => {
         // Error is shown in the modal
@@ -1378,6 +1402,10 @@ const TransactionPage = props => {
     (txId, txRole) => dispatch(fetchTransaction(txId, txRole, config)),
     [dispatch, config]
   );
+  const onFetchOwnListingPickupAddress = useCallback(
+    listingId => dispatch(fetchOwnListingPickupAddress(listingId)),
+    [dispatch]
+  );
   const onFetchTimeSlots = useCallback(
     (listingId, start, end, timeZone, options) =>
       dispatch(fetchTimeSlots(listingId, start, end, timeZone, options)),
@@ -1431,6 +1459,7 @@ const TransactionPage = props => {
       onFetchTransactionLineItems={onFetchTransactionLineItems}
       onFetchTimeSlots={onFetchTimeSlots}
       onFetchTransaction={onFetchTransaction}
+      onFetchOwnListingPickupAddress={onFetchOwnListingPickupAddress}
       onUploadFile={onUploadFile}
       onClearUploadedFiles={onClearUploadedFiles}
       onDownloadFile={onDownloadFile}

@@ -56,14 +56,18 @@ export const search = {
 // NOTE: This only hides the locations in the UI level, the actual
 // coordinates are still accessible in the HTTP requests and the
 // Redux store.
+// Reveevo: enabled, so that maps show an area instead of a pin. The listing's coordinates are
+// also shifted up to 300 m when they are saved (see getListingPickupData in
+// src/util/deliveryAddress.js), and the exact address is only in the listing's private data.
+// The 800 m circle always covers the seller's actual location.
 export const fuzzy = {
-  enabled: false,
+  enabled: true,
 
   // Amount of maximum offset in meters that is applied to obfuscate
   // the original coordinates. The actual value is random, but the
   // obfuscated coordinates are withing a circle that has the same
   // radius as the offset.
-  offset: 500,
+  offset: 800,
 
   // Default zoom level when showing a single circle on a Map. Should
   // be small enough so the whole circle fits in.
