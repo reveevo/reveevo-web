@@ -1,11 +1,13 @@
-;; Reveevo purchase process (release 4)
+;; Reveevo purchase process (release 5)
 ;;
-;; Direct order: the buyer pays (card is held), the seller confirms the sale within 3 days and
+;; Direct order: the buyer pays (card is held), the seller confirms the sale within 48 hours and
 ;; picks the pick-up / collection day (payment is captured), or declines (hold is released).
 ;; Offer: the buyer and the seller negotiate the price in one transaction without a card hold
 ;; (Stripe's amount can't change once the payment is created). When the price is accepted, the
-;; buyer chooses the delivery and pays within 3 days, and the order continues as a direct order.
+;; buyer chooses the delivery and pays within 48 hours, and the order continues as a direct order.
+;; Offers and counter offers expire after 48 hours.
 ;; Hand-over: the buyer's PIN is checked on the server, which then makes an operator transition.
+;; Orders without a hand-over are canceled and refunded after 7 days.
 {:format :v3,
  :transitions
  [{:name :transition/inquire,
@@ -71,7 +73,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/first-entered-state :state/pending-confirmation]}
-     {:fn/period ["P3D"]}]},
+     {:fn/period ["PT48H"]}]},
    :actions
    [{:name :action/calculate-full-refund}
     {:name :action/stripe-refund-payment}
@@ -115,7 +117,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/last-entered-state :state/offer-pending]}
-     {:fn/period ["P3D"]}]},
+     {:fn/period ["PT48H"]}]},
    :actions [],
    :from :state/offer-pending,
    :to :state/offer-expired}
@@ -141,7 +143,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/last-entered-state :state/counter-offer-pending]}
-     {:fn/period ["P3D"]}]},
+     {:fn/period ["PT48H"]}]},
    :actions [],
    :from :state/counter-offer-pending,
    :to :state/offer-expired}
@@ -159,7 +161,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/first-entered-state :state/offer-accepted]}
-     {:fn/period ["P3D"]}]},
+     {:fn/period ["PT48H"]}]},
    :actions [],
    :from :state/offer-accepted,
    :to :state/offer-expired}
@@ -230,7 +232,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/first-entered-state :state/purchased]}
-     {:fn/period ["P14D"]}]},
+     {:fn/period ["P7D"]}]},
    :actions
    [{:name :action/calculate-full-refund}
     {:name :action/stripe-refund-payment}

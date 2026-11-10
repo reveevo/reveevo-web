@@ -23,6 +23,7 @@ const {
 } = require('../api-util/sdk');
 const { getShippingQuote, needsShippingQuote } = require('../services/shipping');
 const { assertEmailVerified, requiresVerifiedEmail } = require('../services/users');
+const { assertOfferLimit } = require('../services/offers');
 
 const { Money } = sharetribeSdk.types;
 
@@ -168,6 +169,12 @@ module.exports = (req, res) => {
 
       // Check if the transition is related to negotiation offers and if the offers are valid
       throwErrorIfNegotiationOfferHasInvalidHistory(transitionName, existingOffers, transitions);
+      // Product offers: the buyer and the seller can make a limited number of offers
+      assertOfferLimit({
+        processName: transaction.attributes.processName,
+        transitionName,
+        existingOffers,
+      });
 
       const currency =
         transaction.attributes.payinTotal?.currency ||

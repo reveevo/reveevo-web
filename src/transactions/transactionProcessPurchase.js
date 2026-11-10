@@ -407,6 +407,10 @@ export const statesNeedingCustomerAttention = [states.COUNTER_OFFER_PENDING, sta
 // metadata.offers: [{ offerInSubunits, by, transition }]          //
 /////////////////////////////////////////////////////////////////////
 
+// The buyer and the seller can make at most this many offers in total (the first offer included).
+// Note: keep in sync with MAX_OFFERS_PER_TRANSACTION in server/services/offers
+export const MAX_OFFERS_PER_TRANSACTION = 10;
+
 // Transitions that set a new offer (i.e. add an entry to metadata.offers)
 const offerTransitions = [
   transitions.CUSTOMER_MAKE_OFFER,

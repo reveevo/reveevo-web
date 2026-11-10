@@ -4,6 +4,7 @@ import {
   CONDITIONAL_RESOLVER_WILDCARD,
   ConditionalResolver,
 } from '../../transactions/transaction';
+import { MAX_OFFERS_PER_TRANSACTION } from '../../transactions/transactionProcessPurchase';
 
 /**
  * Get state data against product process for TransactionPage's UI.
@@ -40,12 +41,13 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
 
   const sharedStateData = { processName, processState, showDetailCardHeadings: true };
 
-  // Both parties can keep countering, but the loop is capped to keep the history readable.
+  // Both parties can counter, up to MAX_OFFERS_PER_TRANSACTION offers in total. While negotiating,
+  // every transition of the transaction is an offer, so the transitions are counted.
   const counterOfferConditions = role => [
     {
       type: 'maxTransitions',
       action: 'disable',
-      max: 50,
+      max: MAX_OFFERS_PER_TRANSACTION,
       disabledReason: {
         translationKey: `TransactionPage.${processName}.${role}.counterOffer.disabled.maxRequests`,
       },
