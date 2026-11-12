@@ -10,8 +10,9 @@ import { FieldSelect, Form, Heading, Modal, PrimaryButton } from '../../../compo
 
 import css from './ConfirmOrderModal.module.css';
 
-// The provider can choose a day within the next two weeks (orders are canceled after 14 days)
-const DAYS_TO_CHOOSE_FROM = 14;
+// The provider can choose today or one of the next 6 days: orders without a hand-over are
+// canceled 7 days after the provider confirms (transition/auto-cancel in process.edn)
+const DAYS_TO_CHOOSE_FROM = 7;
 
 const toDateString = date => {
   const pad = n => `${n}`.padStart(2, '0');
@@ -29,7 +30,7 @@ const getDateOptions = intl =>
   });
 
 /**
- * Modal where the provider confirms the sale (a direct order or an offer) and chooses the day
+ * Modal where the provider confirms the sale (a direct order or a paid offer) and chooses the day
  * when the buyer can pick up the item, or when Reveevo can collect it for shipping.
  *
  * @component

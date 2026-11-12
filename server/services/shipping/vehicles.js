@@ -2,9 +2,16 @@ const { VEHICLES } = require('./rates');
 
 const { MOTORCYCLE, HATCHBACK, SEDAN, SUV, PICKUP, UV, VAN, TRUCK } = VEHICLES;
 
+// Carpets go by size (shared by the current and the old subcategory id)
+const CARPETS = {
+  field: 'carpet_size',
+  options: { small: HATCHBACK, medium: PICKUP, large: UV },
+  fallback: UV,
+};
+
 /**
  * Category → vehicle mapping.
- * Source: "Shipping fees and mapping" spreadsheet, sheet "Category Mapping".
+ * Source: "Category mapping" spreadsheet (revised 11 Nov 2026), sheet "Category Mapping".
  *
  * Keyed by the subcategory id (listing's publicData.categoryLevel2) from the hosted
  * listing-categories config. Some subcategories depend on a listing field (the "variant"):
@@ -59,7 +66,7 @@ const SUBCATEGORY_VEHICLES = {
   'dining-table': {
     field: 'table_size',
     options: {
-      'small-2-people': SUV,
+      'small-2-people': PICKUP,
       'medium-4-people': VAN,
       'large-6-people': VAN,
       'large-8-people': TRUCK,
@@ -102,7 +109,16 @@ const SUBCATEGORY_VEHICLES = {
 
   // Outdoor
   'outdoor-loung': TRUCK,
-  'outdoor-dining': VAN,
+  'outdoor-dining': {
+    field: 'table_size',
+    options: {
+      'small-2-people': PICKUP,
+      'medium-4-people': VAN,
+      'large-6-people': VAN,
+      'large-8-people': TRUCK,
+    },
+    fallback: TRUCK,
+  },
   Hammock: PICKUP,
   'sun-lounger': VAN,
   parasol: PICKUP,
@@ -117,11 +133,9 @@ const SUBCATEGORY_VEHICLES = {
 
   // Textiles
   blanket: MOTORCYCLE,
-  carpets: {
-    field: 'carpet_size',
-    options: { small: HATCHBACK, medium: PICKUP, large: UV },
-    fallback: UV,
-  },
+  carpet: CARPETS,
+  // Old subcategory id of carpets (before it was renamed in Console)
+  carpets: CARPETS,
   curtains: HATCHBACK,
   'table-linens': MOTORCYCLE,
 
@@ -129,8 +143,11 @@ const SUBCATEGORY_VEHICLES = {
   Art: SUV,
   candles: MOTORCYCLE,
   books: HATCHBACK,
-  // Table lamps go by car (sedan), floor lamps by UV. There's no listing field for the lamp type yet.
+  'lighting-table': SEDAN,
+  'lighting-flooe': UV,
+  // Old subcategory for all lamps (before table and floor lamps were split in Console)
   lighting: UV,
+  mirro: SUV,
   'decor-other': HATCHBACK,
   frames: HATCHBACK,
   pillows: HATCHBACK,
@@ -141,6 +158,7 @@ const SUBCATEGORY_VEHICLES = {
   'music-equipment': SUV,
   camping: SUV,
   Sport: SUV,
+  workout: HATCHBACK,
 };
 
 // Used if the listing's subcategory is not in the mapping (e.g. a new subcategory in Console).
