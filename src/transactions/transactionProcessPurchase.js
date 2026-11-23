@@ -1,6 +1,6 @@
 /**
  * Transaction process graph for product orders:
- *   - default-purchase (Reveevo release 4)
+ *   - default-purchase (Reveevo release 6)
  *
  * Direct order: the customer pays (the card is held), the provider confirms the sale and picks the
  * pick-up / collection day (the payment is captured), or declines (the hold is released).
@@ -8,7 +8,8 @@
  * the customer can answer a counter offer the same way. No payment is taken while negotiating:
  * once the price is agreed, the customer pays it (then the order goes on like a direct order).
  * Hand-over: the customer's PIN is entered by the provider (pick up) or Reveevo's courier
- * (shipping), and the server completes the order with an operator transition.
+ * (shipping), and the server confirms the hand-over with an operator transition. The customer then
+ * has 48 hours to report a problem; otherwise the provider is paid automatically.
  */
 
 /**
@@ -75,7 +76,12 @@ export const transitions = {
   // Customer can mark the product received
   MARK_RECEIVED_FROM_PURCHASED: 'transition/mark-received-from-purchased',
 
-  // Automatic cancellation happens if the hand-over doesn't happen in 14 days
+  // After the hand-over, the customer has 48 hours to report a problem (a dispute).
+  // Otherwise the provider is paid automatically.
+  RELEASE_PAYOUT: 'transition/release-payout',
+  DISPUTE_AFTER_HANDOVER: 'transition/dispute-after-handover',
+
+  // Automatic cancellation happens if the hand-over doesn't happen in 8 days
   AUTO_CANCEL: 'transition/auto-cancel',
 
   // Operator can cancel the purchase before the hand-over
@@ -145,6 +151,7 @@ export const states = {
   OFFER_EXPIRED: 'offer-expired',
   PURCHASED: 'purchased',
   COLLECTED: 'collected',
+  HANDED_OVER: 'handed-over',
   DELIVERED: 'delivered',
   RECEIVED: 'received',
   DISPUTED: 'disputed',
@@ -235,8 +242,8 @@ export const graph = {
     [states.PURCHASED]: {
       on: {
         [transitions.OPERATOR_MARK_COLLECTED]: states.COLLECTED,
-        [transitions.OPERATOR_CONFIRM_HANDOVER]: states.RECEIVED,
-        [transitions.MARK_RECEIVED_FROM_PURCHASED]: states.RECEIVED,
+        [transitions.OPERATOR_CONFIRM_HANDOVER]: states.HANDED_OVER,
+        [transitions.MARK_RECEIVED_FROM_PURCHASED]: states.HANDED_OVER,
         [transitions.OPERATOR_MARK_DELIVERED]: states.DELIVERED,
         [transitions.AUTO_CANCEL]: states.CANCELED,
         [transitions.CANCEL]: states.CANCELED,
@@ -244,12 +251,19 @@ export const graph = {
     },
     [states.COLLECTED]: {
       on: {
-        [transitions.OPERATOR_CONFIRM_DELIVERY]: states.RECEIVED,
+        [transitions.OPERATOR_CONFIRM_DELIVERY]: states.HANDED_OVER,
         [transitions.OPERATOR_CANCEL_FROM_COLLECTED]: states.CANCELED,
       },
     },
 
     [states.CANCELED]: {},
+
+    [states.HANDED_OVER]: {
+      on: {
+        [transitions.RELEASE_PAYOUT]: states.RECEIVED,
+        [transitions.DISPUTE_AFTER_HANDOVER]: states.DISPUTED,
+      },
+    },
 
     [states.DELIVERED]: {
       on: {
@@ -322,6 +336,8 @@ export const isRelevantPastTransition = transition => {
     transitions.OPERATOR_CONFIRM_HANDOVER,
     transitions.OPERATOR_CONFIRM_DELIVERY,
     transitions.MARK_RECEIVED_FROM_PURCHASED,
+    transitions.RELEASE_PAYOUT,
+    transitions.DISPUTE_AFTER_HANDOVER,
     transitions.AUTO_CANCEL,
     transitions.CANCEL,
     transitions.OPERATOR_CANCEL_FROM_COLLECTED,

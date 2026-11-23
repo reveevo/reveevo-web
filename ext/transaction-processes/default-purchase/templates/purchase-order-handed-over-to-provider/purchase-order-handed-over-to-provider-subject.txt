@@ -1,0 +1,1 @@
+{{set-translations (asset "content/email-texts.json")}}{{t "PurchaseOrderHandedOverToProvider.Subject" "{listingTitle} was handed over" listingTitle=transaction.listing.title}}

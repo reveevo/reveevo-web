@@ -146,6 +146,13 @@ export const getStateDataForPurchaseProcess = (txInfo, processInfo) => {
       // The hand-over is confirmed with the buyer's PIN (HandoverInfo)
       return { ...sharedStateData, showExtraInfo: true };
     })
+    .cond([states.HANDED_OVER, CUSTOMER], () => {
+      // The customer has 48 hours to report a problem before the provider is paid
+      return { ...sharedStateData, showExtraInfo: true, showDispute: true };
+    })
+    .cond([states.HANDED_OVER, PROVIDER], () => {
+      return { ...sharedStateData, showExtraInfo: true };
+    })
     .cond([states.COLLECTED, _], () => {
       return { ...sharedStateData, showExtraInfo: true };
     })

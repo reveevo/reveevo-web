@@ -6360,6 +6360,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/dispute-after-handover 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-DISPUTE_AFTER_HANDOVER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.disputed.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/expire-accepted-offer 1`] = `
 <div
   class="item"
@@ -7092,7 +7154,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.received.status
+          InboxPage.default-purchase.handed-over.status
         </span>
       </div>
     </div>
@@ -7216,7 +7278,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.received.status
+          InboxPage.default-purchase.handed-over.status
         </span>
       </div>
     </div>
@@ -7278,7 +7340,7 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
         class="stateName stateNoActionNeeded"
       >
         <span>
-          InboxPage.default-purchase.received.status
+          InboxPage.default-purchase.handed-over.status
         </span>
       </div>
     </div>
@@ -7775,6 +7837,68 @@ exports[`InboxPage InboxItem: default-purchase process with "item" check purchas
       >
         <span>
           InboxPage.default-purchase.counter-offer-pending.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-purchase process with "item" check purchase: transition/release-payout 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-purchase-RELEASE_PAYOUT-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing1 title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <span>
+        InboxPage.quantity
+      </span>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-purchase.received.status
         </span>
       </div>
     </div>

@@ -10,8 +10,9 @@ import { FieldSelect, Form, Heading, Modal, PrimaryButton } from '../../../compo
 
 import css from './ConfirmOrderModal.module.css';
 
-// The provider can choose today or one of the next 6 days: orders without a hand-over are
-// canceled 7 days after the provider confirms (transition/auto-cancel in process.edn)
+// The provider chooses a day from tomorrow up to 7 days ahead (not today, so that the shipping
+// can be booked). Orders without a hand-over are canceled 8 days after the provider confirms
+// (transition/auto-cancel in process.edn).
 const DAYS_TO_CHOOSE_FROM = 7;
 
 const toDateString = date => {
@@ -22,7 +23,7 @@ const toDateString = date => {
 const getDateOptions = intl =>
   [...Array(DAYS_TO_CHOOSE_FROM).keys()].map(i => {
     const date = new Date();
-    date.setDate(date.getDate() + i);
+    date.setDate(date.getDate() + i + 1);
     return {
       value: toDateString(date),
       label: intl.formatDate(date, { weekday: 'long', month: 'long', day: 'numeric' }),

@@ -19,6 +19,7 @@ const deleteAccount = require('./api/delete-account');
 const syncPickupLocations = require('./api/sync-pickup-locations');
 const handoverPin = require('./api/handover-pin');
 const confirmHandover = require('./api/confirm-handover');
+const confirmOrder = require('./api/confirm-order');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
 
@@ -62,6 +63,7 @@ router.post('/delete-account', deleteAccount);
 router.post('/sync-pickup-locations', syncPickupLocations);
 router.post('/handover-pin', handoverPin);
 router.post('/confirm-handover', confirmHandover);
+router.post('/confirm-order', confirmOrder);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

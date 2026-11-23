@@ -173,3 +173,11 @@ export const fetchHandoverPin = body => {
 export const confirmHandover = body => {
   return post('/api/confirm-handover', body);
 };
+
+// The provider confirms an order (default-purchase process). The server also saves the courier's
+// delivery link for shipped orders.
+//
+// See `server/api/confirm-order.js` to see what data should be sent in the body.
+export const confirmOrder = body => {
+  return post('/api/confirm-order', body);
+};

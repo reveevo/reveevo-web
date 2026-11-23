@@ -8,6 +8,12 @@ import { matchPathname } from '../../../../util/routes.js';
 import { NamedLink, ExternalLink } from '../../../../components/index.js';
 import css from './Link.module.css';
 
+// A relative path like "s?..." or "s/..." (no scheme like https: or mailto:, no anchor, no "/")
+const RELATIVE_PATH = /^[a-z0-9-]+([/?]|$)/i;
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+const withLeadingSlashMaybe = href =>
+  typeof href === 'string' && !SCHEME.test(href) && RELATIVE_PATH.test(href) ? `/${href}` : href;
+
 /**
  * Link element which internally uses NamedLink or ExternalLink
  *
@@ -23,7 +29,10 @@ export const Link = React.forwardRef((props, ref) => {
   const location = useLocation();
   const routes = useRouteConfiguration();
 
-  const { className, rootClassName, href, title, children } = props;
+  const { className, rootClassName, href: hrefRaw, title, children } = props;
+  // Reveevo: an in-app link written in Console without the leading slash (e.g.
+  // "s?pub_categoryLevel1=dining") would resolve against the current page (e.g. /p/s?...).
+  const href = withLeadingSlashMaybe(hrefRaw);
   const classes = classNames(rootClassName || css.link, className);
   const titleMaybe = title ? { title } : {};
   const linkProps = { className: classes, href, children, ...titleMaybe };

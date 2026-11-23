@@ -900,6 +900,12 @@ export const TransactionPageComponent = props => {
   });
 
   const actionButtonContainer = isMobile ? 'mobile' : 'desktop';
+  // Reveevo: right after the hand-over, the customer reports a problem with its own transition
+  const disputeTransition =
+    process?.transitions?.DISPUTE_AFTER_HANDOVER &&
+    stateData?.processState === process?.states?.HANDED_OVER
+      ? process.transitions.DISPUTE_AFTER_HANDOVER
+      : process?.transitions?.DISPUTE;
 
   // Accepted purchase offer: the customer chooses the delivery method on OrderPanel (like after
   // an inquiry). The offered quantity is fixed and the server prices line items with the offer.
@@ -1182,12 +1188,12 @@ export const TransactionPageComponent = props => {
             onManageDisableScrolling={onManageDisableScrolling}
             onDisputeOrder={onDisputeOrder(
               transaction?.id,
-              process.transitions.DISPUTE,
+              disputeTransition,
               onTransition,
               setDisputeSubmitted
             )}
             disputeSubmitted={disputeSubmitted}
-            disputeInProgress={transitionInProgress === process.transitions.DISPUTE}
+            disputeInProgress={transitionInProgress === disputeTransition}
             disputeError={transitionError}
           />
         ) : null}

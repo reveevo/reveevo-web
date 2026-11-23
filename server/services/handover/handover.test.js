@@ -1,7 +1,13 @@
 jest.mock('../../api-util/sdk', () => ({ getIntegrationSdk: jest.fn() }));
 
 const { getIntegrationSdk } = require('../../api-util/sdk');
-const { confirmHandover, getHandoverPin, HANDOVER_ERROR_CODES } = require('./index');
+const {
+  confirmHandover,
+  getHandoverPin,
+  getDeliveryLink,
+  saveDeliveryLinkMaybe,
+  HANDOVER_ERROR_CODES,
+} = require('./index');
 
 const TX_ID = '6a1b2c3d-0000-4000-8000-000000000001';
 const PROVIDER_ID = 'provider-id';
@@ -82,5 +88,41 @@ describe('handover', () => {
     await expect(
       confirmHandover({ transactionId: TX_ID, pin: getHandoverPin(TX_ID), currentUserId: null })
     ).rejects.toMatchObject({ statusText: HANDOVER_ERROR_CODES.LOCKED });
+  });
+
+  describe('delivery link', () => {
+    beforeAll(() => {
+      process.env.REACT_APP_MARKETPLACE_ROOT_URL = 'https://reveevo.example/';
+    });
+
+    it('builds the courier link from the marketplace root URL', () => {
+      expect(getDeliveryLink(TX_ID)).toBe(`https://reveevo.example/delivery/${TX_ID}`);
+    });
+
+    it('saves the link to metadata for shipped orders', async () => {
+      const iSdk = mockIntegrationSdk();
+      const tx = {
+        id: { uuid: TX_ID },
+        attributes: { protectedData: { deliveryMethod: 'shipping' } },
+      };
+      await expect(saveDeliveryLinkMaybe(tx)).resolves.toBe(
+        `https://reveevo.example/delivery/${TX_ID}`
+      );
+      expect(iSdk.transactions.updateMetadata).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { deliveryLink: `https://reveevo.example/delivery/${TX_ID}` },
+        })
+      );
+    });
+
+    it('skips pick-up orders', async () => {
+      const iSdk = mockIntegrationSdk();
+      const tx = {
+        id: { uuid: TX_ID },
+        attributes: { protectedData: { deliveryMethod: 'pickup' } },
+      };
+      await expect(saveDeliveryLinkMaybe(tx)).resolves.toBeNull();
+      expect(iSdk.transactions.updateMetadata).not.toHaveBeenCalled();
+    });
   });
 });

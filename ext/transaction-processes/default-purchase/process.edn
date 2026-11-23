@@ -1,4 +1,4 @@
-;; Reveevo purchase process (release 5)
+;; Reveevo purchase process (release 6)
 ;;
 ;; Direct order: the buyer pays (card is held), the seller confirms the sale within 48 hours and
 ;; picks the pick-up / collection day (payment is captured), or declines (hold is released).
@@ -7,7 +7,10 @@
 ;; buyer chooses the delivery and pays within 48 hours, and the order continues as a direct order.
 ;; Offers and counter offers expire after 48 hours.
 ;; Hand-over: the buyer's PIN is checked on the server, which then makes an operator transition.
-;; Orders without a hand-over are canceled and refunded after 7 days.
+;; The seller picks a hand-over day from the next day up to 7 days ahead. Orders without a
+;; hand-over are canceled and refunded 8 days after the seller confirms.
+;; After the hand-over, the buyer has 48 hours to report a problem (a dispute that the operator
+;; resolves). Otherwise the seller is paid automatically 48 hours after the hand-over.
 {:format :v3,
  :transitions
  [{:name :transition/inquire,
@@ -172,19 +175,33 @@
    :to :state/collected}
   {:name :transition/operator-confirm-handover,
    :actor :actor.role/operator,
-   :actions [{:name :action/stripe-create-payout}],
+   :actions [],
    :from :state/purchased,
-   :to :state/received}
+   :to :state/handed-over}
   {:name :transition/operator-confirm-delivery,
    :actor :actor.role/operator,
-   :actions [{:name :action/stripe-create-payout}],
+   :actions [],
    :from :state/collected,
-   :to :state/received}
+   :to :state/handed-over}
   {:name :transition/mark-received-from-purchased,
    :actor :actor.role/customer,
-   :actions [{:name :action/stripe-create-payout}],
+   :actions [],
    :from :state/purchased,
+   :to :state/handed-over}
+  ;; The seller is paid 48 hours after the hand-over (the buyer's window to report a problem)
+  {:name :transition/release-payout,
+   :at
+   {:fn/plus
+    [{:fn/timepoint [:time/first-entered-state :state/handed-over]}
+     {:fn/period ["PT48H"]}]},
+   :actions [{:name :action/stripe-create-payout}],
+   :from :state/handed-over,
    :to :state/received}
+  {:name :transition/dispute-after-handover,
+   :actor :actor.role/customer,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/handed-over,
+   :to :state/disputed}
   {:name :transition/operator-mark-delivered,
    :actor :actor.role/operator,
    :actions [],
@@ -232,7 +249,7 @@
    :at
    {:fn/plus
     [{:fn/timepoint [:time/first-entered-state :state/purchased]}
-     {:fn/period ["P7D"]}]},
+     {:fn/period ["P8D"]}]},
    :actions
    [{:name :action/calculate-full-refund}
     {:name :action/stripe-refund-payment}
@@ -384,18 +401,34 @@
    :on :transition/expire-accepted-offer,
    :to :actor.role/customer,
    :template :purchase-offer-expired}
-  {:name :notification/order-handover-confirmed,
+  {:name :notification/order-handover-confirmed-to-customer,
+   :on :transition/operator-confirm-handover,
+   :to :actor.role/customer,
+   :template :purchase-order-handed-over-to-customer}
+  {:name :notification/order-handover-confirmed-to-provider,
    :on :transition/operator-confirm-handover,
    :to :actor.role/provider,
-   :template :purchase-order-marked-as-received}
-  {:name :notification/order-delivery-confirmed,
+   :template :purchase-order-handed-over-to-provider}
+  {:name :notification/order-delivery-confirmed-to-customer,
+   :on :transition/operator-confirm-delivery,
+   :to :actor.role/customer,
+   :template :purchase-order-handed-over-to-customer}
+  {:name :notification/order-delivery-confirmed-to-provider,
    :on :transition/operator-confirm-delivery,
    :to :actor.role/provider,
-   :template :purchase-order-marked-as-received}
+   :template :purchase-order-handed-over-to-provider}
   {:name :notification/order-marked-as-received-from-purchased,
    :on :transition/mark-received-from-purchased,
    :to :actor.role/provider,
+   :template :purchase-order-handed-over-to-provider}
+  {:name :notification/order-payout-released,
+   :on :transition/release-payout,
+   :to :actor.role/provider,
    :template :purchase-order-marked-as-received}
+  {:name :notification/order-disputed-after-handover,
+   :on :transition/dispute-after-handover,
+   :to :actor.role/provider,
+   :template :purchase-order-disputed}
   {:name :notification/purchase-order-operator-marked-as-delivered-to-customer,
    :on :transition/operator-mark-delivered,
    :to :actor.role/customer,

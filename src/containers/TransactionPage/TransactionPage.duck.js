@@ -11,7 +11,7 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
-import { transactionLineItems, transitionPrivileged } from '../../util/api';
+import { confirmOrder, transactionLineItems, transitionPrivileged } from '../../util/api';
 import * as log from '../../util/log';
 import {
   updatedEntities,
@@ -362,6 +362,13 @@ const makeTransitionPayloadCreator = (
     });
   const normalTransition = () =>
     sdk.transactions.transition({ id: txId, transition: transitionName, params }, { expand: true });
+  // Reveevo: the provider's order confirmation goes through the server, which also saves the
+  // courier's delivery link for shipped orders.
+  const confirmOrderTransition = () =>
+    confirmOrder({ transactionId: txId, params, queryParams: { expand: true } });
+  const isConfirmOrder =
+    !!process?.transitions?.PROVIDER_CONFIRM_ORDER &&
+    transitionName === process.transitions.PROVIDER_CONFIRM_ORDER;
   // Negotiation process / accept update: check if payin total has changed
   const acceptUpdateTransition = () =>
     sdk.transactions.show({ id: txId }, { expand: true }).then(response => {
@@ -379,7 +386,9 @@ const makeTransitionPayloadCreator = (
       );
     });
 
-  const makeCall = process?.isPrivileged(transitionName)
+  const makeCall = isConfirmOrder
+    ? confirmOrderTransition
+    : process?.isPrivileged(transitionName)
     ? privilegedTransition
     : isNegotiationProcess(processName) && transitionName === process.transitions.ACCEPT_UPDATE
     ? acceptUpdateTransition

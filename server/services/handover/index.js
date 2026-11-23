@@ -10,7 +10,7 @@ const { UUID } = types;
 const PIN_LENGTH = 6;
 const MAX_PIN_ATTEMPTS = 5;
 
-// default-purchase process (release 3): states where the hand-over can be confirmed
+// default-purchase process: states where the hand-over can be confirmed
 const HANDOVER_TRANSITIONS = {
   'state/purchased': 'transition/operator-confirm-handover',
   'state/collected': 'transition/operator-confirm-delivery',
@@ -130,10 +130,44 @@ const confirmHandover = async ({ transactionId, pin, currentUserId }) => {
   return { transition };
 };
 
+/**
+ * Returns the link of the page where Reveevo's courier enters the customer's PIN.
+ *
+ * @param {string} transactionId
+ * @returns {string} e.g. https://example.com/delivery/<transaction id>
+ */
+const getDeliveryLink = transactionId => {
+  const rootUrl = (process.env.REACT_APP_MARKETPLACE_ROOT_URL || '').replace(/\/+$/, '');
+  return `${rootUrl}/delivery/${transactionId}`;
+};
+
+/**
+ * Saves the courier's delivery link to the transaction's metadata, so that the operator can
+ * copy it from Console and send it to the delivery company. Only shipped orders get it.
+ *
+ * @param {Object} transaction the confirmed transaction (Marketplace API entity)
+ * @returns {Promise<string|null>} the saved link, or null
+ */
+const saveDeliveryLinkMaybe = async transaction => {
+  const isShipping = transaction?.attributes?.protectedData?.deliveryMethod === 'shipping';
+  if (!isShipping) {
+    return null;
+  }
+  const transactionId = transaction.id.uuid;
+  const deliveryLink = getDeliveryLink(transactionId);
+  await getIntegrationSdk().transactions.updateMetadata({
+    id: new UUID(transactionId),
+    metadata: { deliveryLink },
+  });
+  return deliveryLink;
+};
+
 module.exports = {
   HANDOVER_ERROR_CODES,
   MAX_PIN_ATTEMPTS,
   getHandoverPin,
   getPinForCustomer,
   confirmHandover,
+  getDeliveryLink,
+  saveDeliveryLinkMaybe,
 };
