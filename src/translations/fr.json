@@ -1798,5 +1798,8 @@
   "EditListingPhotosForm.maxImagesExceeded": "{maxImages, plural, one {Cette annonce peut contenir 1 image.} other {Cette annonce peut contenir jusqu'à {maxImages} images.}} Supprimez les images en trop pour pouvoir enregistrer.",
   "ListingImageGallery.screenreader.nextImage": "Image suivante",
   "ListingImageGallery.screenreader.previousImage": "Image précédente",
-  "ListingPage.screenreader.showMap": "Afficher la carte interactive"
+  "ListingPage.screenreader.showMap": "Afficher la carte interactive",
+  "CustomExtendedDataField.sellByInPast": "Choisissez une date à partir de demain.",
+  "SortBy.sellBySoonest": "Date limite : la plus proche d'abord",
+  "SortBy.sellByLatest": "Date limite : la plus lointaine d'abord"
 }

@@ -17,6 +17,12 @@ import {
   validateInteger,
   validateYoutubeURL,
 } from '../../util/validators';
+import {
+  getEarliestSellByDate,
+  isSellByField,
+  sellByDateToTimestamp,
+  sellByTimestampToDate,
+} from '../../util/sellBy';
 // Import shared components
 import { FieldCheckboxGroup, FieldSelect, FieldTextInput, FieldBoolean } from '../../components';
 // Import modules from this directory
@@ -246,6 +252,38 @@ const CustomFieldYoutube = props => {
   );
 };
 
+// Reveevo: the "Sell by" deadline is a number field (unix timestamp) in Console, but sellers
+// pick a date. The form keeps the timestamp; the input shows and takes a date.
+const CustomFieldSellBy = props => {
+  const { name, fieldConfig, defaultRequiredMessage, formId, intl } = props;
+  const { saveConfig } = fieldConfig || {};
+  const { isRequired, requiredMessage } = saveConfig || {};
+  const earliestDate = getEarliestSellByDate();
+  const pastDateMessage = intl.formatMessage({ id: 'CustomExtendedDataField.sellByInPast' });
+
+  const validate = value => {
+    if (value == null) {
+      return isRequired ? requiredMessage || defaultRequiredMessage : undefined;
+    }
+    return sellByTimestampToDate(value) < earliestDate ? pastDateMessage : undefined;
+  };
+
+  return (
+    <FieldTextInput
+      className={css.customField}
+      id={formId ? `${formId}.${name}` : name}
+      name={name}
+      type="date"
+      min={earliestDate}
+      label={getLabel(fieldConfig)}
+      helpText={fieldConfig?.helpText}
+      format={value => sellByTimestampToDate(value)}
+      parse={value => sellByDateToTimestamp(value)}
+      validate={validate}
+    />
+  );
+};
+
 /**
  * Return Final Form field for each configuration according to schema type.
  *
@@ -258,7 +296,7 @@ const CustomFieldYoutube = props => {
  */
 const CustomExtendedDataField = props => {
   const intl = useIntl();
-  const { enumOptions = [], schemaType } = props?.fieldConfig || {};
+  const { enumOptions = [], schemaType, key } = props?.fieldConfig || {};
   const defaultRequiredMessage = intl.formatMessage({
     id: 'CustomExtendedDataField.required',
   });
@@ -266,7 +304,9 @@ const CustomExtendedDataField = props => {
     <FieldComponent {...props} defaultRequiredMessage={defaultRequiredMessage} intl={intl} />
   );
 
-  return schemaType === SCHEMA_TYPE_ENUM && enumOptions
+  return schemaType === SCHEMA_TYPE_LONG && isSellByField(key)
+    ? renderFieldComponent(CustomFieldSellBy, props)
+    : schemaType === SCHEMA_TYPE_ENUM && enumOptions
     ? renderFieldComponent(CustomFieldEnum, props)
     : schemaType === SCHEMA_TYPE_MULTI_ENUM && enumOptions
     ? renderFieldComponent(CustomFieldMultiEnum, props)

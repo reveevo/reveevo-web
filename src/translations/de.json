@@ -1798,5 +1798,8 @@
   "PromoCodesPage.historyUsed": "Verwendet",
   "PromoCodesPage.historyReturned": "Zurückgegeben",
   "PromoCodesPage.historyOrder": "Bestellung {id}",
-  "PromoCodesPage.historyReasonDeclined": "vom Verkäufer abgelehnt"
+  "PromoCodesPage.historyReasonDeclined": "vom Verkäufer abgelehnt",
+  "CustomExtendedDataField.sellByInPast": "Wähle ein Datum ab morgen.",
+  "SortBy.sellBySoonest": "Frist: früheste zuerst",
+  "SortBy.sellByLatest": "Frist: späteste zuerst"
 }

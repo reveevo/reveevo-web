@@ -16,6 +16,7 @@ import { parse } from '../../util/urlHelpers';
 import { getReferralParams } from '../../util/webStorageHelpers';
 
 import { addMarketplaceEntities } from '../../ducks/marketplaceData.duck';
+import { withSellBySortTieBreak } from '../../util/sellBy';
 
 // Pagination page size might need to be dynamic on responsive page layouts
 // Current design has max 3 columns 12 is divisible by 2 and 3
@@ -252,7 +253,7 @@ const searchListingsPayloadCreator = ({ searchParams, config }, thunkAPI) => {
 
     // User-specified sort takes priority
     if (sortParam !== undefined && sortParam !== sortConfig.relevanceKey) {
-      return { sort: sortParam };
+      return { sort: withSellBySortTieBreak(sortParam) };
     }
 
     // No sort parameter needed when keyword search is used or sort config is inactive
@@ -260,8 +261,8 @@ const searchListingsPayloadCreator = ({ searchParams, config }, thunkAPI) => {
       return {};
     }
 
-    // Fall back to default sort
-    return { sort: defaultSort };
+    // Fall back to default sort (Reveevo: the "Sell by" deadline, soonest first)
+    return { sort: withSellBySortTieBreak(defaultSort) };
   };
 
   const {

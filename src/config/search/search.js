@@ -3,6 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 import { configIssue, isPlainObject } from '../config.shared';
+import { getSellBySortLabelKey } from '../../util/sellBy';
 
 const MAIN_SEARCH_TYPES = ['location', 'keywords'];
 
@@ -40,17 +41,19 @@ export const getSortOptionsFromListingFields = listingFields => {
 
     const options = [];
 
+    // Reveevo: the "Sell by" deadline is a date, so its options get their own labels
+    const labelKey = key => getSellBySortLabelKey(key) || 'SortBy.numericSortOption';
     if (sortingOrder.asc) {
       options.push({
         key: `-${sortKey}`,
-        labelTranslationKey: 'SortBy.numericSortOption',
+        labelTranslationKey: labelKey(`-${sortKey}`),
         translationValues: { fieldLabel: label, direction: 'asc' },
       });
     }
     if (sortingOrder.desc) {
       options.push({
         key: sortKey,
-        labelTranslationKey: 'SortBy.numericSortOption',
+        labelTranslationKey: labelKey(sortKey),
         translationValues: { fieldLabel: label, direction: 'desc' },
       });
     }

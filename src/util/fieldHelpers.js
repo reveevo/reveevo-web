@@ -11,6 +11,7 @@ import {
 } from './types';
 import appSettings from '../config/settings';
 import { addScopePrefix } from './userHelpers';
+import { formatSellByDate, isSellByField } from './sellBy';
 
 const { stripeSupportedCurrencies, subUnitDivisors } = appSettings;
 
@@ -346,7 +347,8 @@ export const getDetailCustomFieldValue = (
     : schemaType === 'boolean'
     ? { key, value: getBooleanMessage(value), label }
     : schemaType === 'long'
-    ? { key, value, label }
+    ? // Reveevo: the "Sell by" deadline is a unix timestamp, shown as a date
+      { key, value: isSellByField(key) ? formatSellByDate(intl, value) : value, label }
     : schemaType === 'shortText'
     ? { key, value, label }
     : null;
