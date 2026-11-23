@@ -304,7 +304,7 @@
   "EditListingPage.screenreader.removeImage": "Eliminar imagen - posición actual {currentPosition}.",
   "EditListingPage.titleCreateListing": "Publicar anuncio | {panelHeading}",
   "EditListingPage.titleEditListing": "Editar anuncio | {panelHeading}",
-  "EditListingPhotosForm.addImagesTip": "Consejo: sube las mejores 2-3 fotos desde diferentes ángulos.",
+  "EditListingPhotosForm.addImagesTip": "Sube las mejores 2-3 fotos desde diferentes ángulos.",
   "EditListingPhotosForm.chooseImage": "+ Añadir una foto…",
   "EditListingPhotosForm.filesNotReady": "Antes de poder publicar, los archivos que subiste deben pasar una verificación de seguridad. Consulta el estado en la {filesTabLink}. Tu anuncio se ha guardado como borrador.",
   "EditListingPhotosForm.filesTabLinkText": "pestaña Archivos",
@@ -1794,5 +1794,9 @@
   "PromoCodesPage.historyUsed": "Usado",
   "PromoCodesPage.historyReturned": "Devuelto",
   "PromoCodesPage.historyOrder": "Pedido {id}",
-  "PromoCodesPage.historyReasonDeclined": "rechazado por el vendedor"
+  "PromoCodesPage.historyReasonDeclined": "rechazado por el vendedor",
+  "EditListingPhotosForm.maxImagesExceeded": "{maxImages, plural, one {Este anuncio puede tener 1 imagen.} other {Este anuncio puede tener hasta {maxImages} imágenes.}} Elimina las imágenes sobrantes para guardar.",
+  "ListingImageGallery.screenreader.nextImage": "Imagen siguiente",
+  "ListingImageGallery.screenreader.previousImage": "Imagen anterior",
+  "ListingPage.screenreader.showMap": "Mostrar mapa interactivo"
 }

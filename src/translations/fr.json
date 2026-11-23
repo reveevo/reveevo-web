@@ -304,7 +304,7 @@
   "EditListingPage.screenreader.removeImage": "Supprimer l'image - position actuelle {currentPosition}.",
   "EditListingPage.titleCreateListing": "Déposer une annonce | {panelHeading}",
   "EditListingPage.titleEditListing": "Modifier l'annonce | {panelHeading}",
-  "EditListingPhotosForm.addImagesTip": "Astuce : ajoutez 2-3 photos de bonne qualité et avec différents angles.",
+  "EditListingPhotosForm.addImagesTip": "Ajoutez 2–3 photos de bonne qualité et avec différents angles.",
   "EditListingPhotosForm.chooseImage": "+ Ajouter une photo…",
   "EditListingPhotosForm.filesNotReady": "Avant de pouvoir publier, les fichiers que vous avez ajoutés doivent passer les contrôles de sécurité. Vérifiez le statut dans {filesTabLink}. Votre annonce a été enregistrée comme brouillon.",
   "EditListingPhotosForm.filesTabLinkText": "l'onglet Fichiers",
@@ -1794,5 +1794,9 @@
   "PromoCodesPage.historyUsed": "Utilisé",
   "PromoCodesPage.historyReturned": "Rendu",
   "PromoCodesPage.historyOrder": "Commande {id}",
-  "PromoCodesPage.historyReasonDeclined": "refusée par le vendeur"
+  "PromoCodesPage.historyReasonDeclined": "refusée par le vendeur",
+  "EditListingPhotosForm.maxImagesExceeded": "{maxImages, plural, one {Cette annonce peut contenir 1 image.} other {Cette annonce peut contenir jusqu'à {maxImages} images.}} Supprimez les images en trop pour pouvoir enregistrer.",
+  "ListingImageGallery.screenreader.nextImage": "Image suivante",
+  "ListingImageGallery.screenreader.previousImage": "Image précédente",
+  "ListingPage.screenreader.showMap": "Afficher la carte interactive"
 }

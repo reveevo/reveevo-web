@@ -1,4 +1,5 @@
 import {
+  getCheckoutPaymentTransitions,
   getTransitionsWithMatchingOffers,
   isNegotiationState,
   isValidNegotiationOffersArray,
@@ -36,5 +37,21 @@ describe('transactionProcessPurchase offers', () => {
     const result = getTransitionsWithMatchingOffers(pastTransitions, offers);
     expect(result.map(t => t.offerInSubunits)).toEqual([8000, 9000, undefined]);
     expect(getTransitionsWithMatchingOffers(pastTransitions, [])).toBe(pastTransitions);
+  });
+});
+
+describe('transactionProcessPurchase checkout transitions', () => {
+  const card = { paymentProcessor: 'stripe', paymentMethod: 'card' };
+
+  it('pays a direct order, an inquiry and an accepted offer with their own transitions', () => {
+    expect(getCheckoutPaymentTransitions({ ...card }).requestPaymentTransition).toBe(
+      transitions.REQUEST_PAYMENT
+    );
+    expect(
+      getCheckoutPaymentTransitions({ ...card, state: 'inquiry' }).requestPaymentTransition
+    ).toBe(transitions.REQUEST_PAYMENT_AFTER_INQUIRY);
+    expect(
+      getCheckoutPaymentTransitions({ ...card, state: 'offer-accepted' }).requestPaymentTransition
+    ).toBe(transitions.REQUEST_PAYMENT_AFTER_OFFER);
   });
 });
