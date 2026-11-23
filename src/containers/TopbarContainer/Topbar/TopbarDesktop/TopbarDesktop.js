@@ -3,7 +3,7 @@ import classNames from 'classnames';
 
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { ACCOUNT_SETTINGS_PAGES } from '../../../../routing/routeConfiguration';
-import { showCreateListingLinkForUser } from '../../../../util/userHelpers';
+import { isAdminUser, showCreateListingLinkForUser } from '../../../../util/userHelpers';
 import {
   Avatar,
   InlineTextButton,
@@ -104,6 +104,17 @@ const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLin
             <FormattedMessage id="TopbarDesktop.accountSettingsLink" />
           </NamedLink>
         </MenuItem>
+        {isAdminUser(currentUser) ? (
+          <MenuItem key="PromoCodesPage">
+            <NamedLink
+              className={classNames(css.menuLink, currentPageClass('PromoCodesPage'))}
+              name="PromoCodesPage"
+            >
+              <span className={css.menuItemBorder} />
+              <FormattedMessage id="TopbarDesktop.promoCodesLink" />
+            </NamedLink>
+          </MenuItem>
+        ) : null}
         <MenuItem key="logout">
           <InlineTextButton rootClassName={css.logoutButton} onClick={onLogout}>
             <span className={css.menuItemBorder} />

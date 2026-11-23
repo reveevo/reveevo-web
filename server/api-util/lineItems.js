@@ -6,6 +6,7 @@ const {
 } = require('./lineItemHelpers');
 const { types } = require('sharetribe-flex-sdk');
 const { getIvaLineItemMaybe } = require('../services/iva');
+const { getPromoDiscountLineItemMaybe } = require('../services/promoCodes/discount');
 const { Money } = types;
 
 /**
@@ -130,9 +131,17 @@ const getDateRangeQuantityAndLineItems = (orderData, code) => {
  * @param {Money} [orderData.offer] - The offered unit price (set by the server for offer transitions)
  * @param {Object} providerCommission
  * @param {Object} customerCommission
+ * @param {Object} [options]
+ * @param {Object} [options.promoCode] - A promo code checked by the server (see server/services/promoCodes)
  * @returns {Array} lineItems
  */
-exports.transactionLineItems = (listing, orderData, providerCommission, customerCommission) => {
+exports.transactionLineItems = (
+  listing,
+  orderData,
+  providerCommission,
+  customerCommission,
+  options = {}
+) => {
   const publicData = listing.attributes.publicData;
   // Note: the unitType needs to be one of the following:
   // day, night, hour, fixed, or item (these are related to payment processes)
@@ -239,5 +248,11 @@ exports.transactionLineItems = (listing, orderData, providerCommission, customer
   ];
 
   // IVA on the shipping fee and commissions (paid by the customer, see server/services/iva)
-  return [...lineItems, ...getIvaLineItemMaybe(lineItems, currency)];
+  // and the promo code's discount, paid by Reveevo from its commission (see
+  // server/services/promoCodes). The promo code is only ever set by the server.
+  return [
+    ...lineItems,
+    ...getIvaLineItemMaybe(lineItems, currency),
+    ...getPromoDiscountLineItemMaybe(lineItems, options.promoCode, currency),
+  ];
 };

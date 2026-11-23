@@ -1,0 +1,144 @@
+@import '../../styles/customMediaQueries.css';
+
+.content {
+  width: 100%;
+  max-width: 1056px;
+  margin: 0 auto;
+  padding: 24px 24px 64px 24px;
+
+  @media (--viewportMedium) {
+    padding: 48px 24px 96px 24px;
+  }
+}
+
+.description {
+  margin: 12px 0 24px 0;
+  color: var(--colorGrey700);
+}
+
+.error {
+  composes: textSmall from global;
+  color: var(--colorFail);
+  margin: 0 0 16px 0;
+}
+
+.section {
+  margin-top: 32px;
+}
+
+.sectionHeading {
+  margin: 0 0 16px 0;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+
+  & th,
+  & td {
+    padding: 12px 16px 12px 0;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--colorGrey100);
+    white-space: nowrap;
+  }
+
+  & th {
+    font-size: 14px;
+    line-height: 18px;
+    font-weight: var(--fontWeightSemiBold);
+    color: var(--colorGrey700);
+  }
+}
+
+.code {
+  font-weight: var(--fontWeightSemiBold);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+}
+
+.action {
+  composes: textSmall from global;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.capInfo {
+  margin: 0 0 8px 0;
+  padding: 16px;
+  border-radius: var(--borderRadiusMedium);
+  background-color: var(--colorGrey50);
+}
+
+.capInfoTitle {
+  margin: 0;
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.capInfoText {
+  composes: textSmall from global;
+  margin: 8px 0 0 0;
+  color: var(--colorGrey700);
+}
+
+.capNote {
+  display: block;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--colorGrey700);
+}
+
+.historyRow td {
+  background-color: var(--colorGrey50);
+  white-space: normal;
+}
+
+.historyNote {
+  composes: textSmall from global;
+  margin: 0;
+  color: var(--colorGrey700);
+}
+
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historyEntry {
+  display: grid;
+  grid-template-columns: 180px 100px 110px 1fr;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.historyUsed {
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.historyReturned {
+  font-weight: var(--fontWeightSemiBold);
+  color: var(--colorSuccess);
+}
+
+.historyOrder {
+  color: var(--colorGrey700);
+}

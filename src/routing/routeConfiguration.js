@@ -17,6 +17,7 @@ const CheckoutPage = loadable(() => import(/* webpackChunkName: "CheckoutPage" *
 const CMSPage = loadable(() => import(/* webpackChunkName: "CMSPage" */ '../containers/CMSPage/CMSPage'));
 const DeliveryConfirmationPage = loadable(() => import(/* webpackChunkName: "DeliveryConfirmationPage" */ '../containers/DeliveryConfirmationPage/DeliveryConfirmationPage'));
 const DeliveryAddressPage = loadable(() => import(/* webpackChunkName: "DeliveryAddressPage" */ '../containers/DeliveryAddressPage/DeliveryAddressPage'));
+const PromoCodesPage = loadable(() => import(/* webpackChunkName: "PromoCodesPage" */ '../containers/PromoCodesPage/PromoCodesPage'));
 const ContactDetailsPage = loadable(() => import(/* webpackChunkName: "ContactDetailsPage" */ '../containers/ContactDetailsPage/ContactDetailsPage'));
 const EditListingPage = loadable(() => import(/* webpackChunkName: "EditListingPage" */ '../containers/EditListingPage/EditListingPage'));
 const EmailVerificationPage = loadable(() => import(/* webpackChunkName: "EmailVerificationPage" */ '../containers/EmailVerificationPage/EmailVerificationPage'));
@@ -347,6 +348,15 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/delivery/:id',
       name: 'DeliveryConfirmationPage',
       component: DeliveryConfirmationPage,
+    },
+    {
+      // Reveevo's admins (profile.metadata.isAdmin) manage promo codes
+      path: '/account/promo-codes',
+      name: 'PromoCodesPage',
+      auth: true,
+      authPage: 'LoginPage',
+      component: PromoCodesPage,
+      loadData: pageDataLoadingAPI.PromoCodesPage.loadData,
     },
     {
       path: '/account/address',

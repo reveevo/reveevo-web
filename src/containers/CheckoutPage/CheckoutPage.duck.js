@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { pick } from '../../util/common';
 import { initiatePrivileged, transitionPrivileged } from '../../util/api';
 import { denormalisedResponseEntities } from '../../util/data';
-import { storableError } from '../../util/errors';
+import { getPromoCodeErrorCode, storableError } from '../../util/errors';
 import * as log from '../../util/log';
 import { setCurrentUserHasOrders, fetchCurrentUser } from '../../ducks/user.duck';
 
@@ -28,6 +28,7 @@ const initiateOrderPayloadCreator = (
     quantity,
     bookingDates,
     expectedPayinTotal,
+    promoCode,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -37,6 +38,8 @@ const initiateOrderPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(expectedPayinTotal ? { expectedPayinTotal } : {}),
+    // Checked and applied on the server (see server/services/promoCodes)
+    ...(promoCode ? { promoCode } : {}),
   };
 
   // Parameters for Marketplace API
@@ -307,6 +310,7 @@ const speculateTransactionPayloadCreator = (
     priceVariantName,
     quantity,
     bookingDates,
+    promoCode,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -316,6 +320,7 @@ const speculateTransactionPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
+    ...(promoCode ? { promoCode } : {}),
   };
 
   // Parameters for Marketplace API
@@ -506,7 +511,11 @@ const checkoutPageSlice = createSlice({
       .addCase(speculateTransactionThunk.rejected, (state, action) => {
         console.error(action.payload);
         state.speculateTransactionInProgress = false;
-        state.speculateTransactionError = action.payload;
+        // A promo code that can't be used isn't a page error: the promo code field explains it,
+        // and the price is fetched again without the code
+        state.speculateTransactionError = getPromoCodeErrorCode(action.payload)
+          ? null
+          : action.payload;
       })
       // Stripe Customer cases
       .addCase(stripeCustomerThunk.pending, state => {

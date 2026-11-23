@@ -17,6 +17,7 @@ import PaymentMethodsPage from './PaymentMethodsPage/PaymentMethodsPage.duck';
 import ManageAccountPage from './ManageAccountPage/ManageAccountPage.duck';
 import ProfilePage from './ProfilePage/ProfilePage.duck';
 import ProfileSettingsPage from './ProfileSettingsPage/ProfileSettingsPage.duck';
+import PromoCodesPage from './PromoCodesPage/PromoCodesPage.duck';
 import RequestQuotePage from './RequestQuotePage/RequestQuotePage.duck';
 import SearchPage from './SearchPage/SearchPage.duck';
 import StripePayoutPage from './StripePayoutPage/StripePayoutPage.duck';
@@ -37,6 +38,7 @@ export {
   ManageAccountPage,
   ProfilePage,
   ProfileSettingsPage,
+  PromoCodesPage,
   RequestQuotePage,
   SearchPage,
   StripePayoutPage,

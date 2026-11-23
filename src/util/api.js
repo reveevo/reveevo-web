@@ -181,3 +181,37 @@ export const confirmHandover = body => {
 export const confirmOrder = body => {
   return post('/api/confirm-order', body);
 };
+
+// The provider declines an order (default-purchase process). The server also gives back the
+// promo code use of the order, if it had one.
+//
+// See `server/api/decline-order.js` to see what data should be sent in the body.
+export const declineOrder = body => {
+  return post('/api/decline-order', body);
+};
+
+// Promo codes for Reveevo's admins (profile.metadata.isAdmin). See `server/api/promo-codes.js`.
+export const fetchAdminPromoCodes = () => {
+  return request('/api/admin/promo-codes', { method: methods.GET });
+};
+
+export const createAdminPromoCode = body => {
+  return post('/api/admin/promo-codes', body);
+};
+
+export const updateAdminPromoCode = (id, body) => {
+  return request(`/api/admin/promo-codes/${encodeURIComponent(id)}`, {
+    method: methods.PATCH,
+    body,
+  });
+};
+
+export const deleteAdminPromoCode = id => {
+  return request(`/api/admin/promo-codes/${encodeURIComponent(id)}`, { method: methods.DELETE });
+};
+
+export const fetchAdminPromoCodeHistory = id => {
+  return request(`/api/admin/promo-codes/${encodeURIComponent(id)}/history`, {
+    method: methods.GET,
+  });
+};

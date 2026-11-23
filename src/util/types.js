@@ -410,6 +410,8 @@ export const LINE_ITEM_SHIPPING_FEE = 'line-item/shipping-fee';
 // Reveevo: Mexican VAT on shipping and commissions (see server/services/iva)
 export const LINE_ITEM_IVA = 'line-item/iva';
 export const LINE_ITEM_PICKUP_FEE = 'line-item/pickup-fee';
+// Reveevo: a promo code's discount, paid by Reveevo from its commission (server/services/promoCodes)
+export const LINE_ITEM_PROMO_DISCOUNT = 'line-item/promo-discount';
 
 export const LINE_ITEMS = [
   LINE_ITEM_NIGHT,
@@ -425,6 +427,7 @@ export const LINE_ITEMS = [
   LINE_ITEM_SHIPPING_FEE,
   LINE_ITEM_PICKUP_FEE,
   LINE_ITEM_IVA,
+  LINE_ITEM_PROMO_DISCOUNT,
 ];
 export const LISTING_UNIT_TYPES = [
   LINE_ITEM_NIGHT,

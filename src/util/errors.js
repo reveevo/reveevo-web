@@ -380,3 +380,18 @@ export const storableError = err => {
     apiErrors,
   };
 };
+
+/**
+ * Reveevo: the code of an error about the promo code entered at checkout (from the app's
+ * server, see server/services/promoCodes/checkout.js), or null for other errors.
+ *
+ * @param {Object} error
+ * @returns {string|null} e.g. 'promo-code-invalid'
+ */
+export const getPromoCodeErrorCode = error => {
+  const code = error?.statusText;
+  return typeof code === 'string' &&
+    (code.startsWith('promo-code-') || code === 'too-many-requests')
+    ? code
+    : null;
+};

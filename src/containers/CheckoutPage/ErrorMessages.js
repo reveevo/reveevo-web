@@ -12,6 +12,7 @@ import {
   isTooManyRequestsError,
   transactionInitiateOrderStripeErrors,
   isProviderCommissionBiggerThanMinPrice,
+  getPromoCodeErrorCode,
 } from '../../util/errors';
 import { SHIPPING_ERROR_CODES } from '../../util/deliveryAddress';
 
@@ -41,11 +42,15 @@ export const getErrorMessages = (
   const initiateShippingErrorCode = getShippingErrorCode(initiateOrderError);
   // Note: keep in sync with EMAIL_NOT_VERIFIED in server/services/users
   const isEmailNotVerifiedError = initiateOrderError?.statusText === 'email-not-verified';
+  // Reveevo: the applied promo code can't be used anymore (e.g. it was used up meanwhile)
+  const isPromoCodeError = !!getPromoCodeErrorCode(initiateOrderError);
   const speculateShippingErrorCode = getShippingErrorCode(speculateTransactionError);
 
   // We want to show one error at a time for the real transition
   if (isEmailNotVerifiedError) {
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.emailNotVerifiedError" />;
+  } else if (isPromoCodeError) {
+    initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.promoCodeError" />;
   } else if (initiateShippingErrorCode) {
     initiateOrderErrorMessage = (
       <FormattedMessage id={`CheckoutPage.shippingError.${initiateShippingErrorCode}`} />

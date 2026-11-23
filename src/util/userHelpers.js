@@ -265,3 +265,14 @@ export const getCurrentUserTypeRoles = (config, currentUser) => {
     }
   );
 };
+
+/**
+ * Reveevo: whether the user is one of Reveevo's admins (profile.metadata.isAdmin, set by the
+ * operator in Console). Admins manage promo codes. The app's server checks this on every request
+ * too.
+ *
+ * @param {propTypes.currentUser} currentUser
+ * @returns {boolean}
+ */
+export const isAdminUser = currentUser =>
+  currentUser?.attributes?.profile?.metadata?.isAdmin === true;

@@ -1,0 +1,41 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  @media (--viewportMedium) {
+    flex-direction: row;
+  }
+}
+
+.field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hint {
+  composes: textSmall from global;
+  color: var(--colorGrey700);
+  margin: 0;
+}
+
+.error {
+  composes: textSmall from global;
+  color: var(--colorFail);
+  margin: 0;
+}
+
+.submitButton {
+  @media (--viewportMedium) {
+    align-self: flex-start;
+    min-width: 240px;
+  }
+}

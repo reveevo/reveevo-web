@@ -1,0 +1,46 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  margin: 0 0 24px 0;
+}
+
+.label {
+  composes: h5 from global;
+  display: block;
+  margin: 0 0 8px 0;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-transform: uppercase;
+
+  &::placeholder {
+    text-transform: none;
+  }
+}
+
+.applyButton {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 0;
+  padding: 0 20px;
+}
+
+.error {
+  composes: textSmall from global;
+  color: var(--colorFail);
+  margin: 8px 0 0 0;
+}
+
+.applied {
+  composes: textSmall from global;
+  color: var(--colorSuccess);
+  margin: 8px 0 0 0;
+}

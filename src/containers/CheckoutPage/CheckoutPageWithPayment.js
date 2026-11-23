@@ -19,6 +19,7 @@ import {
 import {
   isTransactionInitiateListingNotFoundError,
   isTransactionsTransitionInvalidTransition,
+  getPromoCodeErrorCode,
 } from '../../util/errors';
 import {
   getProcess,
@@ -44,7 +45,7 @@ import {
 } from '../../components';
 
 // Session helpers file needs to be imported before other CheckoutPage modules that use it
-import { clearData } from './CheckoutPageSessionHelpers';
+import { clearData, storeData } from './CheckoutPageSessionHelpers';
 
 import {
   bookingDatesMaybe,
@@ -68,6 +69,7 @@ import DetailsSideCard from './DetailsSideCard';
 import MobileListingImage from './MobileListingImage';
 import MobileOrderBreakdown from './MobileOrderBreakdown';
 
+import PromoCodeField from './PromoCodeField/PromoCodeField';
 import css from './CheckoutPage.module.css';
 
 // Stripe PaymentIntent statuses, where user actions are already completed
@@ -144,6 +146,9 @@ const getOrderParams = (
   const seatsMaybe = seats ? { seats } : {};
   const deliveryMethod = pageData.orderData?.deliveryMethod;
   const deliveryMethodMaybe = deliveryMethod ? { deliveryMethod } : {};
+  // Reveevo: the promo code the customer applied (checked and applied by the app's server)
+  const promoCode = pageData.orderData?.promoCode;
+  const promoCodeMaybe = promoCode ? { promoCode } : {};
   const { listingType, unitType, priceVariants } = pageData?.listing?.attributes?.publicData || {};
 
   // price variant data for fixed duration bookings
@@ -183,6 +188,7 @@ const getOrderParams = (
     ...priceVariantNameMaybe,
     ...protectedDataMaybe,
     ...optionalPaymentParams,
+    ...promoCodeMaybe,
   };
   return orderParams;
 };
@@ -208,7 +214,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
     const requestTransition = getRequestPaymentTransition(tx, process, processAlias);
     const isPrivileged = process.isPrivileged(requestTransition);
 
-    fetchSpeculatedTransaction(
+    return fetchSpeculatedTransaction(
       orderParams,
       processAlias,
       transactionId,
@@ -216,6 +222,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
       isPrivileged
     );
   }
+  return Promise.resolve();
 };
 
 /**
@@ -588,6 +595,47 @@ export const CheckoutPageWithPayment = props => {
         // Error is shown by the form
       });
 
+  // Reveevo: promo codes. The applied code is part of the order data, so that the price preview
+  // (speculated transaction) and the order use it, and it's kept over page refreshes. While the
+  // price is fetched, this component isn't shown, so the code and its error live in pageData.
+  const { setPageData, sessionStorageKey } = props;
+  const canUsePromoCode =
+    processName === PURCHASE_PROCESS_NAME && !hasFinalLineItems(existingTransaction);
+  const savePageData = newPageData => {
+    setPageData(newPageData);
+    storeData(newPageData.orderData, listing, transaction, sessionStorageKey);
+  };
+  const fetchPreview = newPageData =>
+    fetchSpeculatedTransactionIfNeeded(
+      getOrderParams(newPageData, {}, {}, config),
+      newPageData,
+      fetchSpeculatedTransaction
+    );
+  const handleApplyPromoCode = code => {
+    const { promoCode: previousCode, ...restOrderData } = orderData || {};
+    const newPageData = {
+      ...pageData,
+      orderData: code ? { ...restOrderData, promoCode: code } : restOrderData,
+      promoCodeError: null,
+    };
+    savePageData(newPageData);
+    return fetchPreview(newPageData).then(action => {
+      const promoCodeError = action?.error ? getPromoCodeErrorCode(action.payload) : null;
+      if (promoCodeError) {
+        // The code can't be used: the previous code (if any) stays, and the price is fetched
+        // again with it
+        const previousPageData = {
+          ...pageData,
+          orderData: previousCode ? { ...restOrderData, promoCode: previousCode } : restOrderData,
+          promoCodeError,
+        };
+        savePageData(previousPageData);
+        return fetchPreview(previousPageData);
+      }
+      return action;
+    });
+  };
+
   // Reveevo: buying needs a verified email
   const isEmailUnverified = !!currentUser?.id && !isEmailVerified(currentUser);
 
@@ -738,6 +786,15 @@ export const CheckoutPageWithPayment = props => {
                 onSubmit={handleSaveDeliveryAddress}
                 inProgress={saveDeliveryAddressInProgress}
                 saveError={saveDeliveryAddressError}
+              />
+            ) : null}
+
+            {showPaymentForm && canUsePromoCode ? (
+              <PromoCodeField
+                appliedCode={orderData?.promoCode || null}
+                errorCode={pageData?.promoCodeError || null}
+                disabled={submitting}
+                onApply={handleApplyPromoCode}
               />
             ) : null}
 

@@ -20,6 +20,9 @@ const syncPickupLocations = require('./api/sync-pickup-locations');
 const handoverPin = require('./api/handover-pin');
 const confirmHandover = require('./api/confirm-handover');
 const confirmOrder = require('./api/confirm-order');
+const declineOrder = require('./api/decline-order');
+const promoCodes = require('./api/promo-codes');
+const { createRateLimit } = require('./api-util/rateLimit');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
 
@@ -57,13 +60,27 @@ router.use((req, res, next) => {
 router.get('/initiate-login-as', initiateLoginAs);
 router.get('/login-as', loginAs);
 router.post('/transaction-line-items', transactionLineItems);
-router.post('/initiate-privileged', initiatePrivileged);
-router.post('/transition-privileged', transitionPrivileged);
+// Checkout requests with a promo code are limited per IP address, so that codes can't be guessed
+const limitPromoCodeAttempts = createRateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  skip: req => !req.body?.orderData?.promoCode,
+});
+router.post('/initiate-privileged', limitPromoCodeAttempts, initiatePrivileged);
+router.post('/transition-privileged', limitPromoCodeAttempts, transitionPrivileged);
 router.post('/delete-account', deleteAccount);
 router.post('/sync-pickup-locations', syncPickupLocations);
 router.post('/handover-pin', handoverPin);
 router.post('/confirm-handover', confirmHandover);
 router.post('/confirm-order', confirmOrder);
+router.post('/decline-order', declineOrder);
+
+// Promo codes: Reveevo's admins only (profile.metadata.isAdmin, checked on every request)
+router.get('/admin/promo-codes', promoCodes.list);
+router.post('/admin/promo-codes', promoCodes.create);
+router.patch('/admin/promo-codes/:id', promoCodes.update);
+router.delete('/admin/promo-codes/:id', promoCodes.remove);
+router.get('/admin/promo-codes/:id/history', promoCodes.history);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

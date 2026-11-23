@@ -5,6 +5,11 @@ const { isIntentionToMakeOffer, pickOfferOrderData } = require('../api-util/nego
 const { getShippingQuote, needsShippingQuote } = require('../services/shipping');
 const { assertEmailVerified, requiresVerifiedEmail } = require('../services/users');
 const {
+  getCheckoutPromoCode,
+  getPromoCodeProtectedData,
+  withPromoCodeUse,
+} = require('../services/promoCodes');
+const {
   createCookieTokenStore,
   getSdk,
   getTrustedSdk,
@@ -21,9 +26,9 @@ const listingPromise = (sdk, id) => sdk.listings.show({ id, include: ['author'] 
 const isPurchaseOffer = transitionName => transitionName === 'transition/customer-make-offer';
 
 const getFullOrderData = (clientOrderData, bodyParams, currency) => {
-  // The offer price and the shipping fee are only ever set here on the server.
-  // Ignore them if the client sends them.
-  const { offer, shippingFee, ...orderData } = clientOrderData || {};
+  // The offer price, the shipping fee and the promo code's discount are only ever set here on
+  // the server. Ignore them if the client sends them.
+  const { offer, shippingFee, promoCode, ...orderData } = clientOrderData || {};
   const { offerInSubunits } = orderData;
   const transitionName = bodyParams.transition;
 
@@ -81,6 +86,7 @@ module.exports = (req, res) => {
   let lineItems = null;
   let metadataMaybe = {};
   let deliveryMaybe = {};
+  let promoCode = null;
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
     .then(async ([showListingResponse, fetchAssetsResponse]) => {
@@ -106,6 +112,9 @@ module.exports = (req, res) => {
         : null;
       deliveryMaybe = shippingQuote ? { delivery: shippingQuote.delivery } : {};
 
+      // The promo code entered at checkout (if any), created by Reveevo's admins
+      promoCode = await getCheckoutPromoCode({ code: orderData?.promoCode, transitionName });
+
       lineItems = transactionLineItems(
         listing,
         {
@@ -114,7 +123,8 @@ module.exports = (req, res) => {
           shippingFee: shippingQuote?.shippingFee,
         },
         providerCommission,
-        customerCommission
+        customerCommission,
+        { promoCode }
       );
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
@@ -126,9 +136,14 @@ module.exports = (req, res) => {
     })
     .then(trustedSdk => {
       const { params } = bodyParams;
-      // Both delivery addresses are saved to the transaction, so that both parties see them.
-      const protectedDataMaybe = Object.keys(deliveryMaybe).length
-        ? { protectedData: { ...params?.protectedData, ...deliveryMaybe } }
+      // Both delivery addresses are saved to the transaction, so that both parties see them,
+      // and the applied promo code (if any).
+      const serverProtectedData = {
+        ...deliveryMaybe,
+        ...getPromoCodeProtectedData(promoCode, lineItems),
+      };
+      const protectedDataMaybe = Object.keys(serverProtectedData).length
+        ? { protectedData: { ...params?.protectedData, ...serverProtectedData } }
         : {};
 
       // Add lineItems to the body params
@@ -145,7 +160,16 @@ module.exports = (req, res) => {
       if (isSpeculative) {
         return trustedSdk.transactions.initiateSpeculative(body, queryParams);
       }
-      return trustedSdk.transactions.initiate(body, queryParams);
+      // A use of the promo code is counted only when the order is placed
+      return withPromoCodeUse(
+        {
+          promoCode,
+          lineItems,
+          isSpeculative,
+          details: { listingId: params?.listingId?.uuid || null },
+        },
+        () => trustedSdk.transactions.initiate(body, queryParams)
+      );
     })
     .then(apiResponse => {
       const { status, statusText, data } = apiResponse;

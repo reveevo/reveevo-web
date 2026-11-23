@@ -8,6 +8,7 @@ import classNames from 'classnames';
 import { ACCOUNT_SETTINGS_PAGES } from '../../../../routing/routeConfiguration';
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { ensureCurrentUser } from '../../../../util/data';
+import { isAdminUser } from '../../../../util/userHelpers';
 
 import {
   AvatarLarge,
@@ -191,6 +192,13 @@ const TopbarMobileMenu = props => {
               <FormattedMessage id="TopbarMobileMenu.accountSettingsLink" />
             </NamedLink>
           </li>
+          {isAdminUser(currentUser) ? (
+            <li className={classNames(css.navigationLink, currentPageClass('PromoCodesPage'))}>
+              <NamedLink name="PromoCodesPage">
+                <FormattedMessage id="TopbarMobileMenu.promoCodesLink" />
+              </NamedLink>
+            </li>
+          ) : null}
         </ul>
         <ul className={css.customLinksWrapper}>{extraLinks}</ul>
         <div className={css.spacer} />

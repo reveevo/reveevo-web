@@ -11,7 +11,12 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
-import { confirmOrder, transactionLineItems, transitionPrivileged } from '../../util/api';
+import {
+  confirmOrder,
+  declineOrder,
+  transactionLineItems,
+  transitionPrivileged,
+} from '../../util/api';
 import * as log from '../../util/log';
 import {
   updatedEntities,
@@ -369,6 +374,12 @@ const makeTransitionPayloadCreator = (
   const isConfirmOrder =
     !!process?.transitions?.PROVIDER_CONFIRM_ORDER &&
     transitionName === process.transitions.PROVIDER_CONFIRM_ORDER;
+  // The provider's decline goes through the server too: it gives back the promo code use
+  const declineOrderTransition = () =>
+    declineOrder({ transactionId: txId, queryParams: { expand: true } });
+  const isDeclineOrder =
+    !!process?.transitions?.PROVIDER_DECLINE_ORDER &&
+    transitionName === process.transitions.PROVIDER_DECLINE_ORDER;
   // Negotiation process / accept update: check if payin total has changed
   const acceptUpdateTransition = () =>
     sdk.transactions.show({ id: txId }, { expand: true }).then(response => {
@@ -388,6 +399,8 @@ const makeTransitionPayloadCreator = (
 
   const makeCall = isConfirmOrder
     ? confirmOrderTransition
+    : isDeclineOrder
+    ? declineOrderTransition
     : process?.isPrivileged(transitionName)
     ? privilegedTransition
     : isNegotiationProcess(processName) && transitionName === process.transitions.ACCEPT_UPDATE

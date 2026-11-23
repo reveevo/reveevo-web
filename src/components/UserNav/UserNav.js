@@ -1,8 +1,10 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { FormattedMessage, useIntl } from '../../util/reactIntl';
 import classNames from 'classnames';
 import { ACCOUNT_SETTINGS_PAGES } from '../../routing/routeConfiguration';
 import { LinkTabNavHorizontal } from '../../components';
+import { isAdminUser } from '../../util/userHelpers';
 
 import css from './UserNav.module.css';
 
@@ -33,6 +35,20 @@ const UserNav = props => {
       ]
     : [];
 
+  // Reveevo: admins (profile.metadata.isAdmin) manage promo codes
+  const currentUser = useSelector(state => state.user?.currentUser);
+  const promoCodesTabMaybe = isAdminUser(currentUser)
+    ? [
+        {
+          text: <FormattedMessage id="UserNav.promoCodes" />,
+          selected: currentPage === 'PromoCodesPage',
+          linkProps: {
+            name: 'PromoCodesPage',
+          },
+        },
+      ]
+    : [];
+
   const tabs = [
     ...manageListingsTabMaybe,
     {
@@ -51,6 +67,7 @@ const UserNav = props => {
         name: 'ContactDetailsPage',
       },
     },
+    ...promoCodesTabMaybe,
   ];
 
   return (
